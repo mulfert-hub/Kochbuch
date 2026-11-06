@@ -34,11 +34,22 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
   let out;
   if (props.includes('from_book')) {
     const id = text.match(/\[([^\]]+)\] Shakshuka/)[1];
+    const id2 = text.match(/\[([^\]]+)\] Ofengemüse/)[1];
+    const id3 = text.match(/\[([^\]]+)\] Overnight/)[1];
+    const id4 = text.match(/\[([^\]]+)\] Kürbissuppe/)[1];
     out = {
-      from_book: [{ recipe_id: id, reason: 'Eier und Paprika sind da.', missing: ['1 Dose stückige Tomaten', 'Petersilie'], tip: null }, { recipe_id: 'gibt-es-nicht', reason: 'x', missing: [], tip: null }],
+      from_book: [
+        { recipe_id: id, reason: 'Eier und Paprika sind da.', missing: ['1 Dose stückige Tomaten', 'Petersilie'], tip: null },
+        { recipe_id: 'gibt-es-nicht', reason: 'x', missing: [], tip: null },
+        { recipe_id: id2, reason: 'Paprika und Kartoffeln.', missing: [], tip: null },
+        { recipe_id: id3, reason: 'Für Thea.', missing: [], tip: null },
+        { recipe_id: id4, reason: 'Zwiebeln sind da.', missing: ['Kürbis'], tip: null },
+        { recipe_id: id, reason: 'doppelt', missing: [], tip: null },
+      ],
       new_ideas: [
         { title: 'Kartoffel-Paprika-Pfanne', description: 'Schnell und mild, passt für Thea.', missing: [], time_minutes: 25 },
         { title: 'Paprika-Frittata', description: 'Resteverwertung mit Eiern.', missing: ['Feta'], time_minutes: 20 },
+        { title: 'Gemüse-Omelett', description: 'Klassiker.', missing: [], time_minutes: 15 },
         { title: 'Zu viel', description: 'sollte abgeschnitten werden', missing: [], time_minutes: null },
       ],
     };
@@ -134,12 +145,12 @@ await p.waitForSelector('.today');
 await p.locator('.today textarea').fill('Eier, Paprika, Zwiebeln');
 await p.getByRole('button', { name: 'schnell' }).click();
 await p.getByRole('button', { name: '#Thea' }).click();
-await p.getByRole('button', { name: /3 Vorschläge holen/ }).click();
+await p.getByRole('button', { name: /Vorschläge holen/ }).click();
 await p.waitForSelector('.today-card');
 const req = seen.find((s) => s.props.includes('from_book'));
 check('Anfrage enthält Vorräte, Wünsche, Tags und das Kochbuch', req.text.includes('Eier, Paprika') && req.text.includes('schnell') && req.text.includes('#Thea') && req.text.includes('Zimtschnecken'));
 const badges = await p.locator('.today-badge').allTextContents();
-check('Genau 3 Vorschläge: 1 aus dem Buch + 2 neue Ideen', badges.join(',') === 'Aus eurem Buch,Neue Idee,Neue Idee', badges.join(','));
+check('Alle passenden aus dem Buch (4, ohne Doppelte/Unbekannte) + genau 3 neue Ideen', badges.filter((b) => b === 'Aus eurem Buch').length === 4 && badges.filter((b) => b === 'Neue Idee').length === 3, badges.join(','));
 check('Buch-Vorschlag zuerst, unbekannte IDs verworfen', (await p.locator('.today-card strong').first().textContent()) === 'Shakshuka');
 await p.getByRole('button', { name: /Fehlendes einkaufen/ }).first().click();
 await p.waitForTimeout(300);
@@ -150,7 +161,7 @@ check('Fehlendes auf der Einkaufsliste', (await p.locator('.shop-name').allTextC
 // Idee ausarbeiten → Prüfbildschirm → speichern
 await p.goto(`${BASE}#/heute`);
 await p.getByRole('button', { name: '#Thea' }).click();
-await p.getByRole('button', { name: /3 Vorschläge holen/ }).click();
+await p.getByRole('button', { name: /Vorschläge holen/ }).click();
 await p.waitForSelector('.today-card.is-idea');
 await p.locator('.today-card.is-idea').first().getByRole('button', { name: /Rezept ausarbeiten/ }).click();
 await p.waitForSelector('.editor');

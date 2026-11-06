@@ -22,7 +22,7 @@ function recipeAsText(r: Recipe): string {
 const BASE = `Du hilfst einer Familie beim Kochen. Antworte auf Deutsch, praktisch und kurz. Nutze Einheiten wie im Rezept (g, ml, EL, TL, Stück …).`;
 
 // ---------- Was koche ich heute? ----------
-// Immer genau 3 Vorschläge: zuerst passende Rezepte aus dem Buch, fehlende Plätze mit neuen Ideen aufgefüllt.
+// Alle passenden Rezepte aus dem Buch plus immer 3 neue Ideen.
 const TodaySchema = z.object({
   from_book: z
     .array(
@@ -33,7 +33,7 @@ const TodaySchema = z.object({
         tip: z.string().nullable().describe('optionaler Tipp, z. B. wie man eine fehlende Zutat ersetzt'),
       }),
     )
-    .describe('0 bis 3 Rezepte aus dem Kochbuch, die wirklich gut passen; bestes zuerst'),
+    .describe('alle Rezepte aus dem Kochbuch, die gut zu Zutaten und Wünschen passen (auch keins, wenn nichts passt); bestes zuerst'),
   new_ideas: z
     .array(
       z.object({
@@ -43,7 +43,7 @@ const TodaySchema = z.object({
         time_minutes: z.number().nullable(),
       }),
     )
-    .describe('neue Rezeptideen außerhalb des Kochbuchs, so viele, dass es zusammen mit from_book genau 3 Vorschläge sind'),
+    .describe('genau 3 neue Rezeptideen, die nicht im Kochbuch stehen'),
 });
 export type BookSuggestion = z.infer<typeof TodaySchema>['from_book'][number] & { recipe: Recipe };
 export type RecipeIdea = z.infer<typeof TodaySchema>['new_ideas'][number];
@@ -61,7 +61,7 @@ export async function whatToCook(
     .join('\n');
   const out = await callClaude(
     TodaySchema,
-    `${BASE} Mache genau 3 Vorschläge. Nimm zuerst Rezepte aus dem Kochbuch der Familie, die wirklich gut zu den vorhandenen Zutaten und Wünschen passen (Tags mit # zählen als Merkmale, z. B. #Thea = für Thea geeignet). Passen weniger als 3 gut, ergänze neue, alltagstaugliche Rezeptideen, die die Wünsche erfüllen und möglichst die vorhandenen Zutaten nutzen. Grundzutaten wie Salz, Pfeffer, Öl, Mehl, Zucker gelten als vorhanden.`,
+    `${BASE} Nenne alle Rezepte aus dem Kochbuch der Familie, die gut zu den vorhandenen Zutaten und Wünschen passen (Tags mit # zählen als Merkmale, z. B. #Thea = für Thea geeignet). Schlage außerdem genau 3 neue, alltagstaugliche Rezeptideen vor, die nicht im Kochbuch stehen, die Wünsche erfüllen und möglichst die vorhandenen Zutaten nutzen. Grundzutaten wie Salz, Pfeffer, Öl, Mehl, Zucker gelten als vorhanden.`,
     [
       {
         type: 'text',
@@ -70,8 +70,9 @@ export async function whatToCook(
     ],
   );
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const fromBook = out.from_book.flatMap((s) => (byId.has(s.recipe_id) ? [{ ...s, recipe: byId.get(s.recipe_id)! }] : [])).slice(0, 3);
-  return { fromBook, ideas: out.new_ideas.slice(0, Math.max(0, 3 - fromBook.length)) };
+  const seen = new Set<string>();
+  const fromBook = out.from_book.flatMap((s) => (byId.has(s.recipe_id) && !seen.has(s.recipe_id) && seen.add(s.recipe_id) ? [{ ...s, recipe: byId.get(s.recipe_id)! }] : []));
+  return { fromBook, ideas: out.new_ideas.slice(0, 3) };
 }
 
 /** Eine Idee zum vollständigen Rezept ausarbeiten lassen */

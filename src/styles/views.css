@@ -2391,3 +2391,17 @@ h1.cook-step-no {
 .today-card.is-idea {
   border-style: dashed;
 }
+
+.today-section {
+  font-size: 22px;
+  margin: 10px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.today-section span {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--muted);
+}

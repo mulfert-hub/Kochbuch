@@ -1,4 +1,4 @@
-// „Was koche ich heute?“ – immer 3 Vorschläge: zuerst aus dem eigenen Buch, sonst neue Ideen von Claude.
+// „Was koche ich heute?“ – alle passenden Rezepte aus dem eigenen Buch plus 3 neue Ideen von Claude.
 import { useMemo, useState } from 'react';
 import { useCategories, useRecipes } from '../hooks';
 import { navigate } from '../router';
@@ -101,12 +101,16 @@ export function TodayView() {
         ))}
       </div>
       <button className="btn btn-primary btn-block btn-lg" onClick={ask} disabled={busy}>
-        <Icon name="sparkle" /> {busy ? 'Claude blättert im Kochbuch …' : '3 Vorschläge holen'}
+        <Icon name="sparkle" /> {busy ? 'Claude blättert im Kochbuch …' : 'Vorschläge holen'}
       </button>
       {error && <p className="error">{error}</p>}
 
       {result && (
         <div className="today-results">
+          <h2 className="today-section">
+            Aus eurem Buch <span>{result.fromBook.length}</span>
+          </h2>
+          {result.fromBook.length === 0 && <p className="hint">Nichts im Buch passt so richtig – schaut euch die neuen Ideen an.</p>}
           {result.fromBook.map((s) => (
             <article key={s.recipe.id} className="today-card card">
               <span className="today-badge">Aus eurem Buch</span>
@@ -131,6 +135,7 @@ export function TodayView() {
               </div>
             </article>
           ))}
+          {result.ideas.length > 0 && <h2 className="today-section">Neue Ideen</h2>}
           {result.ideas.map((idea) => (
             <article key={idea.title} className="today-card card is-idea">
               <span className="today-badge is-idea">Neue Idee</span>
@@ -156,7 +161,6 @@ export function TodayView() {
               </div>
             </article>
           ))}
-          {result.fromBook.length + result.ideas.length === 0 && <p className="sync-state">Claude hat keine Vorschläge gefunden – versuch es mit anderen Zutaten oder Wünschen.</p>}
         </div>
       )}
     </div>
