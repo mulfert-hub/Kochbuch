@@ -52,6 +52,7 @@ export default defineConfig({
           params: {
             title: 'title',
             text: 'text',
+            url: 'url',
             files: [{ name: 'images', accept: ['image/*'] }],
           },
         },

@@ -29,6 +29,12 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     (async () => {
       const form = await event.request.formData();
       const files = form.getAll('images').filter((f): f is File => f instanceof File);
+      // Geteilter Link (z. B. aus dem Browser): Android schickt ihn mal als „url“, mal im „text“
+      if (!files.length) {
+        const raw = `${form.get('url') ?? ''} ${form.get('text') ?? ''}`;
+        const link = raw.match(/https?:\/\/[^\s<>"']+/i)?.[0];
+        return Response.redirect(`${self.registration.scope}#/import${link ? `?link=${encodeURIComponent(link)}` : ''}`, 303);
+      }
       const cache = await caches.open(SHARE_CACHE);
       // alte, nicht abgeholte Dateien entfernen
       for (const k of await cache.keys()) await cache.delete(k);

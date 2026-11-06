@@ -81,7 +81,7 @@ export function App() {
       view = <ShoppingView />;
       break;
     case 'import':
-      view = id === 'pruefen' ? <ReviewView /> : <ImportView shared={query.has('shared')} />;
+      view = id === 'pruefen' ? <ReviewView /> : <ImportView shared={query.has('shared')} link={query.get('link')} />;
       break;
     case 'mehr':
       view = <MoreView />;

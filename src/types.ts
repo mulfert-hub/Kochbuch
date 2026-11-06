@@ -38,6 +38,8 @@ export interface Recipe {
   photoId?: string | null;
   /** Herkunft eines Fotos aus dem Internet (Pflichtangabe bei freien Lizenzen) */
   photoCredit?: PhotoCredit | null;
+  /** Webseite, von der das Rezept stammt */
+  sourceUrl?: string;
   /** Roher OCR-Text, falls aus Screenshot importiert. */
   ocrText?: string;
   createdAt: number;
@@ -96,6 +98,7 @@ export interface RecipeDraft {
   /** Foto vom Gericht: Blob = neu/geändert, null = entfernen, undefined = unverändert */
   photo?: Blob | null;
   photoCredit?: PhotoCredit | null;
+  sourceUrl?: string;
   /** Wer das Rezept erkannt hat */
   source?: 'claude' | 'idea';
   /** Wie sicher die Heuristik ist (0–1) – nur zur Anzeige. */

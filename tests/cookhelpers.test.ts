@@ -23,3 +23,14 @@ describe('Supermarkt-Abteilungen', () => {
     ['TK-Erbsen', 'tiefkuehl'], ['Spülmittel', 'sonstiges'],
   ])('%s → %s', (n, a) => expect(guessAisle(n)).toBe(a));
 });
+
+import { ingredientsInStep } from '../src/lib/cookMatch';
+import { parseIngredientLine } from '../src/lib/ingredientParser';
+
+describe('Zutaten im Schritt', () => {
+  const ings = ['1 Zwiebel', '1 rote Paprikaschote', '2 Knoblauchzehen', '1 kg Hokkaido-Kürbis', '2 EL Kürbiskerne', '800 ml Gemüsebrühe', '2 EL Olivenöl'].map((l) => parseIngredientLine(l));
+  const names = (step: string) => ingredientsInStep(step, ings).map((i) => i.name);
+  it('Teil-Wörter', () => expect(names('Zwiebel, Paprika und Knoblauch klein schneiden und im Öl anbraten.')).toEqual(['Zwiebel', 'rote Paprikaschote', 'Knoblauchzehen', 'Olivenöl']));
+  it('kein Kürbis → Kürbiskerne', () => expect(names('Kürbis zugeben und mit Brühe ablöschen.')).toEqual(['Hokkaido-Kürbis', 'Gemüsebrühe']));
+  it('Kürbiskerne direkt', () => expect(names('Kürbiskerne rösten.')).toEqual(['Kürbiskerne']));
+});

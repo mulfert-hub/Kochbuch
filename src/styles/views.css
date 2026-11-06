@@ -2405,3 +2405,62 @@ h1.cook-step-no {
   font-size: 14px;
   color: var(--muted);
 }
+
+.cook-mic.is-on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  animation: timer-pulse 1.6s ease-in-out infinite;
+}
+
+.cook-voice {
+  margin: 8px 16px 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--sage-soft);
+  font-size: 14.5px;
+  display: grid;
+  gap: 4px;
+}
+
+.cook-voice.is-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.cook-heard {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.voice-btn.is-listening {
+  background: var(--accent) !important;
+  color: var(--accent-ink) !important;
+}
+
+.voice-hint {
+  margin: -8px 0 12px;
+}
+
+.link-box {
+  margin-bottom: 18px;
+}
+
+.link-row {
+  display: flex;
+  gap: 8px;
+}
+
+.link-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.recipe-source {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.recipe-source a {
+  color: var(--accent);
+}

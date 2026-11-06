@@ -7,7 +7,9 @@ import { displayItem } from '../lib/shopping';
 import { formatQuantity } from '../lib/quantity';
 import { unitLabel } from '../lib/units';
 import { Icon } from '../components/Icon';
-import { confirmDialog } from '../components/ui';
+import { confirmDialog, toast } from '../components/ui';
+import { listenOnce, speechSupported } from '../cook/voice';
+import { parseSpokenList } from '../lib/spoken';
 import { navigate } from '../router';
 import type { ShoppingItem } from '../types';
 import { AISLES, aisleFor, getAisleOverrides, setAisleOverride, type AisleId } from '../lib/aisles';
@@ -78,6 +80,7 @@ export function ShoppingView() {
   const items = useLiveQuery(() => db.shopping.orderBy('order').toArray(), []);
   const [text, setText] = useState('');
   const [picking, setPicking] = useState<ShoppingItem | null>(null);
+  const [listening, setListening] = useState(false);
   if (!items) return null;
   const open = items.filter((i) => !i.checked);
   // Offene Einträge nach Abteilungen in Laufreihenfolge gruppieren
@@ -114,10 +117,34 @@ export function ShoppingView() {
         }}
       >
         <input className="input" placeholder="Hinzufügen, z. B. „2 Zitronen“" value={text} onChange={(e) => setText(e.target.value)} aria-label="Eintrag hinzufügen" enterKeyHint="done" />
+        {speechSupported() && (
+          <button
+            type="button"
+            className={`icon-btn voice-btn${listening ? ' is-listening' : ''}`}
+            aria-label="Per Sprache hinzufügen"
+            disabled={listening}
+            onClick={async () => {
+              setListening(true);
+              try {
+                const said = await listenOnce();
+                const entries = parseSpokenList(said);
+                for (const e of entries) await addManualShopping(e);
+                toast(entries.length ? `${entries.length} ${entries.length === 1 ? 'Eintrag' : 'Einträge'} hinzugefügt: ${entries.join(', ')}` : 'Nichts verstanden');
+              } catch (e) {
+                toast((e as Error).message);
+              } finally {
+                setListening(false);
+              }
+            }}
+          >
+            <Icon name="mic" />
+          </button>
+        )}
         <button className="icon-btn btn-primary-icon" type="submit" aria-label="Hinzufügen" disabled={!text.trim()}>
           <Icon name="plus" />
         </button>
       </form>
+      {listening && <p className="hint voice-hint">Ich höre zu … z. B. „Milch, zwei Zitronen und Butter“</p>}
 
       {items.length === 0 ? (
         <div className="empty">

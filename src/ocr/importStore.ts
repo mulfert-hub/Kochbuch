@@ -162,3 +162,33 @@ export async function runText(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Rezept von einer Webseite: Claude ruft die Seite ab und liest das Rezept heraus. */
+export async function runUrl(url: string): Promise<boolean> {
+  const ai = await import('../ai/claudeRecipe');
+  if (!ai.claudeConfigured()) {
+    setState({ error: NO_KEY_MESSAGE });
+    return false;
+  }
+  if (!navigator.onLine) {
+    setState({ error: 'Keine Internetverbindung.' });
+    return false;
+  }
+  setState({ running: true, progress: 0.3, status: 'Claude lädt die Seite und liest das Rezept …', error: undefined });
+  try {
+    const { db } = await import('../db/db');
+    const draft = await ai.recognizeUrlWithClaude(url, await db.categories.orderBy('order').toArray());
+    setState({ drafts: [{ id: uid(), draft, imageIds: [] }], current: 0, running: false, progress: 1, status: 'Fertig' });
+    return true;
+  } catch (e) {
+    console.error(e);
+    setState({ running: false, error: e instanceof ai.ClaudeError ? e.message : 'Die Seite konnte nicht gelesen werden.' });
+    return false;
+  }
+}
+
+/** Erste Webadresse in einem Text finden (geteilte Texte enthalten oft Titel + Link) */
+export function extractUrl(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s<>"']+/i);
+  return m ? m[0].replace(/[).,;!?]+$/, '') : null;
+}

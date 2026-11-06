@@ -139,21 +139,29 @@ export async function callClaude<S extends z.ZodType>(
   schema: S,
   system: string,
   content: Anthropic.Beta.BetaContentBlockParam[],
+  tools?: Anthropic.Beta.BetaToolUnion[],
 ): Promise<z.infer<S>> {
   if (!getApiKey()) throw new ClaudeError('Dafür wird Claude benötigt: unter „Mehr → Rezepterkennung mit Claude“ einen API-Schlüssel eintragen.', 'auth');
   if (!navigator.onLine) throw new ClaudeError('Keine Internetverbindung. Claude braucht Internet.', 'network');
   const model = getModel();
   let res;
+  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: 'user', content }];
   try {
+    for (let round = 0; ; round++) {
     res = await client().beta.messages.parse({
       model,
       max_tokens: 16000,
       system,
-      messages: [{ role: 'user', content }],
+      messages,
+      ...(tools ? { tools } : {}),
       output_config: { effort: model === 'claude-opus-5-5' ? 'medium' : 'low', format: betaZodOutputFormat(schema) },
       // Falls Claude eine Anfrage fälschlich ablehnt, versucht Anthropic sie automatisch mit einem passenden Ersatzmodell
       ...(model === 'claude-opus-5-5' ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     });
+      // Server-Werkzeuge (z. B. Webseite abrufen) können pausieren → mit der bisherigen Antwort fortsetzen
+      if (res.stop_reason !== 'pause_turn' || round >= 3) break;
+      messages.push({ role: 'assistant', content: res.content as Anthropic.Beta.BetaContentBlockParam[] });
+    }
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError)
       throw new ClaudeError('Der API-Schlüssel ist ungültig oder hat keine Berechtigung.', 'auth');
@@ -169,8 +177,17 @@ export async function callClaude<S extends z.ZodType>(
 }
 
 async function request(content: Anthropic.Beta.BetaContentBlockParam[], categories: Category[]): Promise<RecipeDraft> {
-  const r = await callClaude(RecipeSchema, SYSTEM, content);
-  if (!r.is_recipe) throw new ClaudeError('Auf dem Bild wurde kein Rezept gefunden.', 'not-recipe');
+  return requestWith(content, categories, undefined, 'Auf dem Bild wurde kein Rezept gefunden.');
+}
+
+async function requestWith(
+  content: Anthropic.Beta.BetaContentBlockParam[],
+  categories: Category[],
+  tools: Anthropic.Beta.BetaToolUnion[] | undefined,
+  notRecipe: string,
+): Promise<RecipeDraft> {
+  const r = await callClaude(RecipeSchema, SYSTEM, content, tools);
+  if (!r.is_recipe) throw new ClaudeError(notRecipe, 'not-recipe');
   return toDraft(r, categories);
 }
 
@@ -199,6 +216,23 @@ export function toDraft(r: ClaudeRecipe, categories: Category[]): RecipeDraft {
     ocrText: '',
     source: 'claude',
   };
+}
+
+/** Liest ein Rezept von einer Webseite – Claude ruft die Seite selbst ab (Web Fetch von Anthropic). */
+export async function recognizeUrlWithClaude(url: string, categories: Category[]): Promise<RecipeDraft> {
+  const draft = await requestWith(
+    [
+      {
+        type: 'text',
+        text: `Rufe diese Seite ab und lies das Rezept daraus: ${url}\nKategorien zur Auswahl: ${categories.map((c) => c.name).join(', ') || '(keine)'}.\nKann die Seite nicht geladen werden oder enthält sie kein Rezept, setze is_recipe auf false.`,
+      },
+    ],
+    categories,
+    [{ type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 3, max_content_tokens: 60000 }],
+    'Auf der Seite wurde kein Rezept gefunden – oder sie konnte nicht geladen werden (manche Seiten sperren den Abruf). Dann bitte einen Screenshot verwenden.',
+  );
+  draft.sourceUrl = url;
+  return draft;
 }
 
 /** Liest ein Rezept aus eingefügtem Text. */

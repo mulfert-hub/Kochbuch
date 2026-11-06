@@ -8,22 +8,12 @@ import { Icon } from '../components/Icon';
 import { TimerChips } from '../components/StepText';
 import { formatAmount } from '../lib/quantity';
 import { inflectName } from '../lib/units';
-import { fold } from '../lib/search';
 import type { Ingredient } from '../types';
-
-/** Zutaten, die in einem Schritt erwähnt werden („Zwiebel und Knoblauch schälen“) */
-export function ingredientsInStep(step: string, ingredients: Ingredient[]): Ingredient[] {
-  const all = fold(step).split(/[^a-z0-9ß]+/);
-  const words = all.filter((w) => w.length >= 3);
-  const short = all.filter((w) => w.length === 2); // „Öl“, „Ei“
-  return ingredients.filter((i) => {
-    const nameWords = fold(i.name.replace(/\(.*?\)/g, '')).split(/[^a-z0-9ß]+/).filter((w) => w.length >= 4);
-    return nameWords.some((nw) => {
-      const stem = nw.slice(0, Math.max(4, nw.length - 2)); // „zwiebeln“ ≈ „zwiebel“
-      return words.some((w) => w.startsWith(stem) || (w.length >= 5 && nw.endsWith(w))) || short.some((w) => nw.endsWith(w) && w !== 'en' && w !== 'er');
-    });
-  });
-}
+import { ingredientsInStep } from '../lib/cookMatch';
+import { parseCookCommand } from '../lib/spoken';
+import { speak, speechSupported, stopSpeaking, useContinuousListening } from '../cook/voice';
+import { startTimer, stopFinished } from '../cook/timers';
+import { findDurations, formatDurationShort } from '../lib/durations';
 
 function useWakeLock() {
   const [active, setActive] = useState(false);
@@ -61,7 +51,59 @@ export function CookView({ id, servings }: { id: string; servings: number | null
   const total = steps.length + 1; // Seite 0 = Zutaten
   const factor = recipe?.servings && servings ? servings / recipe.servings : 1;
 
+  const amount = (i: Ingredient) => formatAmount(i.quantity, i.quantityMax, i.unit, factor);
+  const name = (i: Ingredient) => inflectName(i.name, i.unit, i.quantity == null ? null : i.quantity * factor);
   const go = (d: number) => setPage((p) => Math.min(total, Math.max(0, p + d)));
+
+  // ---------- Sprachsteuerung ----------
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  const pageText = (p: number) => {
+    if (!recipe) return '';
+    if (p === 0) return `Zutaten: ${recipe.ingredients.map((i) => `${amount(i)} ${name(i)}`.trim()).join(', ')}.`;
+    if (p > steps.length) return 'Fertig. Guten Appetit!';
+    return `Schritt ${p}. ${steps[p - 1]}`;
+  };
+  const say = (text: string) => {
+    voice.pause();
+    speak(text, () => voice.resume());
+  };
+  const voice = useContinuousListening(
+    voiceOn,
+    (text) => {
+      const cmd = parseCookCommand(text);
+      setHeard(cmd ? text : `„${text}“ – nicht verstanden`);
+      if (!cmd) return;
+      const p = pageRef.current;
+      if (cmd.type === 'next' || cmd.type === 'prev') {
+        const target = Math.min(total, Math.max(0, p + (cmd.type === 'next' ? 1 : -1)));
+        setPage(target);
+        say(pageText(target));
+      } else if (cmd.type === 'read') say(pageText(p));
+      else if (cmd.type === 'ingredients') {
+        setPage(0);
+        say(pageText(0));
+      } else if (cmd.type === 'timer') {
+        startTimer(`${recipe?.title ?? 'Timer'}`, cmd.seconds, id);
+        say(`Timer ${formatDurationShort(cmd.seconds).replace('Min.', 'Minuten').replace('Std.', 'Stunden').replace('Sek.', 'Sekunden')} gestartet.`);
+      } else if (cmd.type === 'stepTimer') {
+        const d = p > 0 && p <= steps.length ? findDurations(steps[p - 1])[0] : undefined;
+        if (d) {
+          startTimer(`${recipe?.title ?? 'Rezept'} – Schritt ${p}`, d.seconds, id);
+          say(`Timer ${formatDurationShort(d.seconds).replace('Min.', 'Minuten').replace('Std.', 'Stunden')} gestartet.`);
+        } else say('In diesem Schritt steht keine Zeit. Sag zum Beispiel: Timer zehn Minuten.');
+      } else if (cmd.type === 'stopAlarm') stopFinished();
+      else if (cmd.type === 'stopListening') setVoiceOn(false);
+    },
+    (msg) => {
+      setVoiceError(msg);
+      setVoiceOn(false);
+    },
+  );
+  useEffect(() => () => stopSpeaking(), []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === ' ') go(1);
@@ -80,8 +122,6 @@ export function CookView({ id, servings }: { id: string; servings: number | null
   if (recipe === undefined) return null;
   if (!recipe) return <div className="page"><div className="empty"><h2>Rezept nicht gefunden</h2></div></div>;
 
-  const amount = (i: Ingredient) => formatAmount(i.quantity, i.quantityMax, i.unit, factor);
-  const name = (i: Ingredient) => inflectName(i.name, i.unit, i.quantity == null ? null : i.quantity * factor);
   const isEnd = page === total;
 
   return (
@@ -111,7 +151,38 @@ export function CookView({ id, servings }: { id: string; servings: number | null
         <span className={`cook-wake${wake ? ' is-on' : ''}`} title={wake ? 'Bildschirm bleibt an' : 'Bildschirm kann ausgehen'}>
           {wake ? 'Bildschirm bleibt an' : ''}
         </span>
+        {speechSupported() && (
+          <button
+            className={`icon-btn cook-mic${voiceOn ? ' is-on' : ''}`}
+            onClick={() => {
+              setVoiceError(null);
+              setHeard(null);
+              if (voiceOn) {
+                setVoiceOn(false);
+                stopSpeaking();
+              } else {
+                setVoiceOn(true);
+                speak(pageText(page));
+              }
+            }}
+            aria-pressed={voiceOn}
+            aria-label={voiceOn ? 'Sprachsteuerung aus' : 'Sprachsteuerung an'}
+          >
+            <Icon name="mic" />
+          </button>
+        )}
       </header>
+      {(voiceOn || voiceError) && (
+        <div className={`cook-voice${voiceError ? ' is-error' : ''}`} role="status">
+          {voiceError ?? (
+            <>
+              <strong>{voice.listening ? 'Ich höre zu.' : 'Mikrofon startet …'}</strong>
+              <span>Sag „weiter“, „zurück“, „vorlesen“, „Timer 10 Minuten“ oder „Stopp“.</span>
+              {heard && <span className="cook-heard">{heard}</span>}
+            </>
+          )}
+        </div>
+      )}
       <div className="cook-progress">
         <i style={{ width: `${(page / total) * 100}%` }} />
       </div>

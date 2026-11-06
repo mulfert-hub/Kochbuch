@@ -64,6 +64,13 @@ export function stopTimer(id: string) {
   if (!timers.some((t) => t.endsAt <= Date.now())) stopAlarm();
 }
 
+/** Alle abgelaufenen Timer beenden (Sprachbefehl „Stopp“) */
+export function stopFinished() {
+  timers = timers.filter((t) => t.endsAt > Date.now());
+  save();
+  stopAlarm();
+}
+
 export function addTime(id: string, seconds: number) {
   timers = timers.map((t) => (t.id === id ? { ...t, endsAt: Math.max(Date.now(), t.endsAt) + seconds * 1000 } : t));
   save();

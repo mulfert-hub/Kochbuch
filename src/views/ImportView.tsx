@@ -4,18 +4,28 @@ import { navigate } from '../router';
 import { Icon } from '../components/Icon';
 import { CropDialog } from '../components/CropDialog';
 import { toast } from '../components/ui';
-import { addFiles, moveImage, NO_KEY_MESSAGE, removeImage, runOcr, runText, setCrop, setMode, startManual, useImport } from '../ocr/importStore';
+import { addFiles, moveImage, NO_KEY_MESSAGE, removeImage, runOcr, runText, runUrl, extractUrl, setCrop, setMode, startManual, useImport } from '../ocr/importStore';
 import { claudeConfigured } from '../ai/claudeRecipe';
 import { takeSharedFiles } from '../ocr/share';
 import type { PendingImage } from '../ocr/importStore';
 
-export function ImportView({ shared }: { shared?: boolean }) {
+export function ImportView({ shared, link }: { shared?: boolean; link?: string | null }) {
   const st = useImport();
   const input = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [cropping, setCropping] = useState<PendingImage | null>(null);
   const [pasteMode, setPasteMode] = useState(false);
+  const [url, setUrl] = useState(link ?? '');
+  useEffect(() => {
+    if (link) setUrl(link);
+  }, [link]);
+  const validUrl = extractUrl(url);
+  const fromUrl = async () => {
+    if (!validUrl) return;
+    const ok = await runUrl(validUrl);
+    if (ok) navigate('/import/pruefen');
+  };
   const [pasteText, setPasteText] = useState('');
 
   const hasKey = claudeConfigured();
@@ -62,6 +72,34 @@ export function ImportView({ shared }: { shared?: boolean }) {
           <p className="lede">Claude liest Screenshots und Fotos und macht daraus ein Rezept zum Prüfen.</p>
         </div>
       </div>
+
+      <form
+        noValidate
+        className="link-box"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void fromUrl();
+        }}
+      >
+        <label className="field">
+          <span>Rezept von einer Webseite</span>
+          <div className="link-row">
+            <input
+              className="input"
+              type="text"
+              inputMode="url"
+              placeholder="Link einfügen, z. B. https://…"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              autoCapitalize="off"
+              autoCorrect="off"
+            />
+            <button className="btn btn-primary" type="submit" disabled={!validUrl || st.running}>
+              <Icon name="link" /> Laden
+            </button>
+          </div>
+        </label>
+      </form>
 
       {!hasKey && (
         <div className="notice">

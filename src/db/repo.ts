@@ -49,6 +49,7 @@ export async function createRecipe(draft: RecipeDraft, images: Blob[] = []): Pro
       servingsLabel: draft.servingsLabel,
       categoryIds: draft.categoryIds,
       tags: cleanTags(draft.tags),
+      sourceUrl: draft.sourceUrl,
       ingredients: cleanIngredients(draft.ingredients),
       steps: draft.steps.map((s) => s.trim()).filter(Boolean),
       notes: draft.notes?.trim() || undefined,

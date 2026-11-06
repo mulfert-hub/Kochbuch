@@ -195,6 +195,20 @@ export function RecipeArticle({
         <section className="recipe-col recipe-steps">
           <h2 className="recipe-section-title">Zubereitung</h2>
           {recipe.steps.length ? <StepList steps={recipe.steps} title={recipe.title} recipeId={recipe.id} /> : <p className="muted">Keine Schritte erfasst.</p>}
+          {recipe.sourceUrl && (
+            <p className="recipe-source">
+              Quelle:{' '}
+              <a href={recipe.sourceUrl} target="_blank" rel="noreferrer">
+                {(() => {
+                  try {
+                    return new URL(recipe.sourceUrl).hostname.replace(/^www\./, '');
+                  } catch {
+                    return recipe.sourceUrl;
+                  }
+                })()}
+              </a>
+            </p>
+          )}
           {recipe.notes && (
             <aside className="recipe-notes">
               <strong>Notiz</strong>
