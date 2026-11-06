@@ -15,6 +15,7 @@ import { TodayView } from './views/TodayView';
 import { TimerBar } from './components/TimerBar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/db';
+import './styles/family.css';
 
 const NAV: { to: string; label: string; icon: IconName; match: string }[] = [
   { to: '/buch', label: 'Buch', icon: 'book', match: 'buch' },
@@ -50,6 +51,21 @@ function Nav({ section }: { section: string }) {
         <span>Mehr</span>
       </a>
     </nav>
+  );
+}
+
+/** Zurück zur Familien-App – nur sichtbar, wenn beim Bauen VITE_FAMILIE_URL gesetzt ist
+ *  (z. B. `VITE_FAMILIE_URL=https://… npm run build`; der eigene GitHub-Pages-Deploy setzt sie nicht) */
+const FAMILIE_URL = (import.meta.env.VITE_FAMILIE_URL ?? '').trim();
+
+function FamilyBack() {
+  if (!FAMILIE_URL) return null;
+  return (
+    <div className="family-back">
+      <a href={FAMILIE_URL} className="family-back-link">
+        ← Familie Ulfert
+      </a>
+    </div>
   );
 }
 
@@ -101,9 +117,12 @@ export function App() {
   }
 
   return (
-    <div className={`app section-${section ?? 'buch'}`}>
+    <div className={`app section-${section ?? 'buch'}${FAMILIE_URL ? ' has-family' : ''}`}>
       <Nav section={section ?? 'buch'} />
-      <main className="app-main">{view}</main>
+      <main className="app-main">
+        <FamilyBack />
+        {view}
+      </main>
       <TimerBar />
       <ToastHost />
       <ConfirmHost />
