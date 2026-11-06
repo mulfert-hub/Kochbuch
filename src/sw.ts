@@ -1,8 +1,7 @@
 /// <reference lib="webworker" />
-// Service Worker: App-Dateien offline vorhalten, OCR-Dateien cachen und geteilte Bilder (Share Target) annehmen.
+// Service Worker: App-Dateien offline vorhalten, geteilte Bilder (Share Target) annehmen.
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
-import { CacheFirst } from 'workbox-strategies';
 import { clientsClaim } from 'workbox-core';
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> };
@@ -17,11 +16,10 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Alle Navigationen → index.html (Single-Page-App mit Hash-Routing)
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
 
-// Tesseract-Worker, WASM-Kern und Sprachdaten: beim ersten Gebrauch laden, danach dauerhaft offline.
-registerRoute(
-  ({ url }) => url.origin === self.location.origin && url.pathname.includes('/tesseract/'),
-  new CacheFirst({ cacheName: 'kochbuch-ocr' }),
-);
+// Aufräumen: Cache der früheren Texterkennung auf dem Gerät (ca. 12 MB) wird nicht mehr gebraucht
+self.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(caches.delete('kochbuch-ocr'));
+});
 
 // Web Share Target: Android teilt Screenshots per POST an ./share-target
 self.addEventListener('fetch', (event: FetchEvent) => {

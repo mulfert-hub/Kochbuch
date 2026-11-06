@@ -26,12 +26,12 @@ function ClaudeCard() {
     <section className="more-card card">
       <h2>Rezepterkennung mit Claude</h2>
       <p>
-        Mit eurem eigenen API-Schlüssel von Anthropic liest Claude die Screenshots – deutlich genauer als die Texterkennung auf dem Gerät. Die Bilder
-        werden dafür an Anthropic geschickt. Der Schlüssel bleibt auf diesem Handy und wird nicht synchronisiert.
+        Claude von Anthropic liest eure Screenshots, Fotos und eingefügten Texte. Dafür braucht es euren eigenen API-Schlüssel. Die Bilder werden zur
+        Erkennung an Anthropic geschickt. Der Schlüssel bleibt auf diesem Handy und wird nicht synchronisiert.
       </p>
       {saved ? (
         <>
-          <p className="sync-state">Aktiv. Screenshots werden von Claude gelesen (dafür ist Internet nötig).</p>
+          <p className="sync-state">Aktiv. Screenshots und Texte werden von Claude gelesen (dafür ist Internet nötig).</p>
           <div className="segmented theme-switch claude-models" role="radiogroup" aria-label="Modell">
             {CLAUDE_MODELS.map((m) => (
               <button
@@ -52,7 +52,7 @@ function ClaudeCard() {
             <button
               className="btn btn-ghost"
               onClick={async () => {
-                if (await confirmDialog({ title: 'Schlüssel entfernen?', text: 'Danach liest die App Screenshots wieder mit der einfacheren Texterkennung auf dem Gerät.', confirm: 'Entfernen' })) {
+                if (await confirmDialog({ title: 'Schlüssel entfernen?', text: 'Ohne Schlüssel können keine Screenshots mehr eingelesen werden. Von Hand anlegen geht weiterhin.', confirm: 'Entfernen' })) {
                   setApiKey('');
                   setKey('');
                   setSaved(false);
@@ -187,7 +187,6 @@ export function MoreView() {
   const counts = useLiveQuery(async () => ({ r: await db.recipes.count(), i: await db.images.count() }), []);
   const [busy, setBusy] = useState<string | null>(null);
   const [storage, setStorage] = useState<{ usage: number; quota: number; persisted: boolean } | null>(null);
-  const [ocrState, setOcrState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const file = useRef<HTMLInputElement>(null);
   const [theme, setThemeState] = useState<ThemeChoice>(getTheme());
 
@@ -297,28 +296,6 @@ export function MoreView() {
         </div>
       </section>
 
-      <section className="more-card card">
-        <h2>Texterkennung offline</h2>
-        <p>Die deutsche Texterkennung (ca. 5 MB) wird beim ersten Import geladen und danach auf dem Gerät gespeichert. Du kannst sie hier vorab laden, z. B. im WLAN.</p>
-        <div className="more-actions">
-          <button
-            className="btn"
-            disabled={ocrState === 'loading'}
-            onClick={async () => {
-              setOcrState('loading');
-              try {
-                await (await import('../ocr/ocr')).warmUpOcr();
-                setOcrState('ready');
-              } catch {
-                setOcrState('error');
-              }
-            }}
-          >
-            <Icon name={ocrState === 'ready' ? 'check' : 'download'} />
-            {ocrState === 'loading' ? 'Lade …' : ocrState === 'ready' ? 'Bereit' : ocrState === 'error' ? 'Fehler, erneut versuchen' : 'Jetzt laden'}
-          </button>
-        </div>
-      </section>
 
       <section className="more-card card">
         <h2>Speicher</h2>
@@ -409,7 +386,7 @@ export function MoreView() {
       <p className="about">
         Kochbuch · läuft komplett offline · keine Cloud, kein Tracking.
         <br />
-        Texterkennung: Tesseract.js (Apache-2.0).
+        Rezepterkennung: Claude von Anthropic (eigener API-Schlüssel).
       </p>
     </div>
   );

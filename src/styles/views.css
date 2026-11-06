@@ -1857,3 +1857,18 @@
 .claude-models button span {
   font-size: 12px;
 }
+
+.notice {
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  margin-bottom: 18px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.notice p {
+  margin: 0;
+  font-size: 15px;
+}

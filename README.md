@@ -1,6 +1,6 @@
 # Kochbuch
 
-Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, die App liest den Text **direkt auf dem Gerät** (Tesseract.js, Deutsch) und macht daraus ein durchblätterbares Kochbuch. Kein Konto, kein Server, keine Cloud, kein Tracking. Alles bleibt in deinem Browser (IndexedDB).
+Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, **Claude** (Anthropic) liest sie aus, und daraus wird ein durchblätterbares Kochbuch. Kein eigener Server, kein Tracking. Die Rezepte liegen im Browser-Speicher des Handys (IndexedDB), auf Wunsch zusätzlich in eurem Google Drive.
 
 <p>
   <img src="docs/buch-titel.png" width="200" alt="Titelseite mit Inhaltsverzeichnis">
@@ -11,20 +11,18 @@ Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, di
 
 ## Funktionen
 
-- **Import**: mehrere Screenshots auf einmal per Dateiauswahl, Drag & Drop, Einfügen (Strg+V) oder **Teilen → Kochbuch** (Android). Optional zuschneiden. Mehrere Bilder können **ein** Rezept ergeben, Überlappungen werden entfernt. Alternativ Text einfügen oder ein Rezept von Hand anlegen.
-- **Bildaufbereitung**: Skalieren, Graustufen, automatische Umkehrung von Dark-Mode-Screenshots, Kontrastanpassung. Über das ✨-Symbol siehst du, was die Texterkennung zu sehen bekommt.
-- **Automatische Zerlegung** in Titel, Portionen, Zeit, Zutaten (Menge, Einheit, Name, Notiz, Zwischenüberschriften) und Schritte. Das Originalbild bleibt am Rezept gespeichert.
-- **Prüfbildschirm**: alle Felder editierbar, Original daneben (Handy: ausklappbar oben). Zutaten auch „als Text“ bearbeitbar. Rohtext ansehen und neu auswerten.
+- **Import**: mehrere Screenshots oder Fotos auf einmal per Dateiauswahl, Kamera, Drag & Drop, Einfügen (Strg+V) oder **Teilen → Kochbuch** (Android). Optional zuschneiden. Mehrere Bilder können **ein** Rezept ergeben. Alternativ Rezepttext einfügen oder ein Rezept von Hand anlegen.
+- **Rezepterkennung mit Claude** (eigener API-Schlüssel, Einrichtung siehe unten): Claude Opus 5.5 liest Titel, Portionen, Zeit, Zutaten (Menge, Einheit, Name, Notiz, Zwischenüberschriften), Schritte und Tipps und schlägt eine Kategorie vor. Steht kein Rezeptname im Bild, bleibt der Titel leer zum selbst Eintragen. Das Originalbild bleibt am Rezept gespeichert.
+- **Prüfbildschirm**: alle Felder editierbar, Original daneben (Handy: ausklappbar oben). Zutaten auch „als Text“ bearbeitbar.
 - **Buchansicht**: eine Rezeptseite pro Ansicht, Titelseite mit Inhaltsverzeichnis, Blättern per Wischen, Pfeiltasten oder Buttons, mit Seiten-Animation. Beim Kochen Zutaten und Schritte antippen, um sie abzuhaken.
 - **Liste + Detail**: Suche über Titel, Zutaten und Schritte (umlauttolerant: „kurbis“ findet „Kürbis“), Filter nach Kategorie. Am Handy Liste → Detail, am großen Bildschirm nebeneinander.
 - **Inhaltsverzeichnis** nach Kategorien. Kategorien anlegen, umbenennen, sortieren, löschen. Mehrere Kategorien pro Rezept möglich.
 - **Portionen umrechnen** mit +/–. Brüche bei EL, TL und Stück („1½“, „¾“), Dezimalzahlen mit Komma und sinnvoller Rundung bei g und ml („190 g“ statt „187,5 g“), Plural („1 Zehe“ → „2 Zehen“).
 - **Einkaufsliste**: aus einem oder mehreren Rezepten (Rezeptliste → „Auswählen“). Gleiche Zutaten werden zusammengefasst und Einheiten umgerechnet (500 g + 1 kg = 1,5 kg). Abhaken, löschen, leeren, eigene Einträge.
-- **Rezepterkennung mit Claude** (optional, eigener API-Schlüssel): Claude Opus 5.5 liest Screenshots und Fotos deutlich zuverlässiger als die Texterkennung auf dem Gerät, ergänzt fehlende Titel und schlägt eine Kategorie vor. Ohne Schlüssel arbeitet die App mit Tesseract.js lokal.
 - **Foto vom Gericht**: per Kamera oder aus der Mediathek, oder ein **Beispielfoto** aus freien Bilddatenbanken (Openverse) mit automatischem Bildnachweis.
 - **Synchronisation** über ein gemeinsames Google-Konto (versteckter App-Ordner in Google Drive): Rezepte, Kategorien und Fotos auf mehreren Handys gleich halten. Einrichtung siehe unten.
 - **Backup**: Export und Import aller Daten inklusive Bilder als eine JSON-Datei, zusammenführen oder ersetzen.
-- **Offline** nach dem ersten Laden, installierbar auf dem Homescreen, Dark Mode passend zum System.
+- **Offline** nach dem ersten Laden (Lesen, Blättern, Einkaufsliste, Bearbeiten; nur das Einlesen neuer Rezepte braucht Internet), installierbar auf dem Homescreen, Dark Mode passend zum System.
 
 Beim ersten Start werden 8 Beispielrezepte angelegt. Unter **Mehr** kannst du sie löschen oder erneut hinzufügen.
 
@@ -33,7 +31,7 @@ Beim ersten Start werden 8 Beispielrezepte angelegt. Unter **Mehr** kannst du si
 Voraussetzung: [Node.js](https://nodejs.org) ab Version 20.
 
 ```bash
-npm install        # kopiert dabei auch Tesseract-Dateien + deutsche Sprachdaten nach public/tesseract
+npm install
 npm run dev        # Entwicklungsserver, auch im WLAN erreichbar (Adresse steht in der Konsole)
 ```
 
@@ -47,8 +45,6 @@ Weitere Befehle:
 | `npm run test:claude` | Claude-Erkennung mit nachgebildeter Anthropic-API: Anfrage, Übernahme, Fehlerfälle (nach `build`) |
 | `npm run test:sync` | Synchronisationstest mit zwei „Handys“ und nachgebildetem Google Drive (nach `build`) |
 | `npm run test:app` | Funktionstest im Browser: Blättern, Portionen, Einkaufsliste, Suche, Backup, Offline (nach `build`) |
-| `npm run test:ocr` | OCR-Test mit Beispiel-Screenshots, siehe [docs/OCR-TEST.md](docs/OCR-TEST.md) (nach `build`) |
-| `npm run fixtures` | Beispiel-Screenshots für den OCR-Test neu erzeugen |
 
 Die Browser-Tests nutzen Playwright mit Chromium. Falls das nicht installiert ist: `npm i -D playwright && npx playwright install chromium`.
 
@@ -64,7 +60,7 @@ Eine PWA braucht **HTTPS**, damit Service Worker (Offline-Betrieb) und Installat
 4. Die Adresse auf dem Handy öffnen:
    - **iPhone (Safari)**: Teilen-Symbol → **„Zum Home-Bildschirm“**.
    - **Android (Chrome)**: Menü ⋮ → **„App installieren“** bzw. „Zum Startbildschirm hinzufügen“.
-5. Einmal **Mehr → Texterkennung offline → Jetzt laden** tippen (ca. 5 MB, am besten im WLAN). Danach funktioniert alles auch im Flugmodus.
+5. Unter **Mehr → Rezepterkennung mit Claude** den API-Schlüssel eintragen (siehe unten).
 
 Die Rezepte liegen nur auf deinem Handy, nicht auf GitHub. GitHub liefert nur die App-Dateien aus.
 
@@ -119,14 +115,14 @@ Einmalig, etwa 10 Minuten, am besten am Computer. Alles mit dem **gemeinsamen Go
 
 **So funktioniert es:** Die App speichert in einem versteckten App-Ordner in Google Drive (im Drive nicht sichtbar, die App sieht auch nichts anderes). Synchronisiert wird beim Öffnen der App und wenige Sekunden nach jeder Änderung. Pro Rezept gewinnt die neuere Änderung, gelöschte Rezepte bleiben gelöscht, gleiche Kategorien und doppelte Beispielrezepte werden zusammengelegt. Die Einkaufsliste bleibt pro Handy getrennt. Ohne Internet arbeitet die App normal weiter und gleicht später ab.
 
-**Datenschutz:** Mit eingeschalteter Synchronisation liegen Rezepte und Fotos zusätzlich in eurem Google Drive. Ohne Synchronisation verlässt nichts das Handy (außer dem Rezepttitel, wenn ihr Fotovorschläge nutzt).
+**Datenschutz:** Mit eingeschalteter Synchronisation liegen Rezepte und Fotos zusätzlich in eurem Google Drive. Unabhängig davon gehen eingelesene Bilder und Texte zur Erkennung an Anthropic (Claude) und bei Fotovorschlägen der Rezepttitel an Openverse.
 
 ## Technik
 
 - **Vite + React + TypeScript**: Für das Blättern genügen Pointer-Events und CSS-3D-Transforms, es gibt keine Animationsbibliothek. Hash-Routing, damit GitHub Pages ohne Serverkonfiguration funktioniert.
 - **Dexie** (IndexedDB) für Rezepte, Kategorien, Bilder (als Blob), Einkaufsliste und Einstellungen.
-- **Tesseract.js** mit selbst ausgelieferten Dateien (`public/tesseract/`: Worker, WASM-Kern in SIMD- und Basis-Variante, `deu.traineddata`). Es werden **keine** CDN-Dateien geladen. Die OCR-Dateien cacht der Service Worker beim ersten Gebrauch.
-- **vite-plugin-pwa** (injectManifest) mit eigenem Service Worker `src/sw.ts`: Precache der App, Laufzeit-Cache der OCR-Dateien, Web Share Target (POST).
+- **Claude** über das offizielle Anthropic-SDK (`@anthropic-ai/sdk`), direkt aus dem Browser mit dem Schlüssel des Nutzers; Antwort als strukturierte Ausgabe (Zod-Schema), Einheiten werden auf die App-Kurzformen normalisiert.
+- **vite-plugin-pwa** (injectManifest) mit eigenem Service Worker `src/sw.ts`: Precache der App, Web Share Target (POST).
 - Schriften (Fraunces, Instrument Sans) sind über `@fontsource` gebündelt und funktionieren offline.
 
 ### Projektstruktur
@@ -135,17 +131,18 @@ Einmalig, etwa 10 Minuten, am besten am Computer. Alles mit dem **gemeinsamen Go
 src/
   types.ts              Datenmodell
   db/                   Dexie-Schema, Repository-Funktionen, Beispieldaten, Backup
+  ai/                   Rezepterkennung mit Claude
+  sync/                 Google-Anmeldung, Drive-Client, Synchronisation
   lib/                  reine Logik (getestet): Mengen, Einheiten, Zutaten-Parser,
-                        Rezept-Heuristik, Spaltenerkennung, Screenshots zusammenfügen,
-                        Einkaufsliste, Suche
-  ocr/                  Bildvorverarbeitung (Canvas), Tesseract-Wrapper, Import-Ablauf, Share Target
+                        Einkaufsliste, Suche, Fotosuche, Zusammenführen beim Sync
+  ocr/                  Import-Ablauf, Share Target
   components/           Rezeptdarstellung, Editor, Zuschneiden, Lightbox, Dialoge, Icons
   views/                Buch, Rezepte (Liste/Detail), Inhalt, Einkauf, Import, Prüfen, Bearbeiten, Mehr
   styles/               Designsystem (Farben, Typografie, Dark Mode) und Ansichten
   sw.ts                 Service Worker
 tests/                  Unit-Tests (Vitest)
-e2e/                    Browser-Tests, OCR-Test, Beispiel-Screenshots + erwartete Ergebnisse
-scripts/                Tesseract-Dateien kopieren, Icons erzeugen
+e2e/                    Browser-Tests (App, Claude mit nachgebildeter API, Synchronisation)
+scripts/                Icons erzeugen, Playwright laden
 ```
 
 ### Datenmodell
@@ -163,4 +160,4 @@ Mengen werden als Zahl gespeichert („½“ → 0.5) und erst bei der Anzeige f
 
 ## Lizenzen
 
-Tesseract.js und tesseract.js-core: Apache-2.0. Sprachdaten (tessdata): Apache-2.0. Schriften Fraunces und Instrument Sans: SIL Open Font License.
+Anthropic-SDK: MIT. Schriften Fraunces und Instrument Sans: SIL Open Font License.

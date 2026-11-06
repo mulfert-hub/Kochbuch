@@ -25,8 +25,6 @@ export default defineConfig({
       injectRegister: false,
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
-        // Die großen OCR-Dateien werden per Laufzeit-Cache gespeichert (siehe sw.ts).
-        globIgnores: ['tesseract/**'],
       },
       includeAssets: ['icons/*.png', 'icons/*.svg'],
       manifest: {

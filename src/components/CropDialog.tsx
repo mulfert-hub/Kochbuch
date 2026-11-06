@@ -1,8 +1,15 @@
 // Zuschneiden eines Screenshots (z. B. Statusleiste, Werbung oder Navigationsleiste entfernen).
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { CropRect } from '../ocr/preprocess';
 import { Icon } from './Icon';
+
+/** Zuschnitt als Anteile 0–1 der Bildgröße */
+export interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 type Handle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | 'move';
 const MIN = 0.08;

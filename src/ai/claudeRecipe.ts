@@ -131,6 +131,10 @@ export async function recognizeWithClaude(
     text: `${images.length > 1 ? `Diese ${images.length} Bilder gehören zu einem Rezept.` : 'Lies das Rezept aus diesem Bild.'} Kategorien zur Auswahl: ${categories.map((c) => c.name).join(', ') || '(keine)'}.`,
   });
 
+  return request(content, categories);
+}
+
+async function request(content: Anthropic.Beta.BetaContentBlockParam[], categories: Category[]): Promise<RecipeDraft> {
   const model = getModel();
   let res;
   try {
@@ -183,6 +187,14 @@ export function toDraft(r: ClaudeRecipe, categories: Category[]): RecipeDraft {
     ocrText: '',
     source: 'claude',
   };
+}
+
+/** Liest ein Rezept aus eingefügtem Text. */
+export async function recognizeTextWithClaude(text: string, categories: Category[]): Promise<RecipeDraft> {
+  return request(
+    [{ type: 'text', text: `Strukturiere dieses Rezept. Kategorien zur Auswahl: ${categories.map((c) => c.name).join(', ') || '(keine)'}.\n\n${text}` }],
+    categories,
+  );
 }
 
 /** Schlüssel prüfen (kleine, günstige Anfrage) */

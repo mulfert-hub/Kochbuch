@@ -3,29 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { navigate } from '../router';
 import { Icon } from '../components/Icon';
 import { CropDialog } from '../components/CropDialog';
-import { Lightbox } from '../components/Lightbox';
 import { toast } from '../components/ui';
-import { addFiles, moveImage, removeImage, runOcr, setCrop, setMode, startManual, useImport } from '../ocr/importStore';
+import { addFiles, moveImage, NO_KEY_MESSAGE, removeImage, runOcr, runText, setCrop, setMode, startManual, useImport } from '../ocr/importStore';
+import { claudeConfigured } from '../ai/claudeRecipe';
 import { takeSharedFiles } from '../ocr/share';
-import { preprocessImage } from '../ocr/preprocess';
-import { linesFromPlainText, parseRecipe } from '../lib/recipeParser';
 import type { PendingImage } from '../ocr/importStore';
-
-function PreviewProcessed({ img, onClose }: { img: PendingImage; onClose: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let u: string | null = null;
-    preprocessImage(img.file, { crop: img.crop }).then(({ canvas }) =>
-      canvas.toBlob((b) => {
-        if (b) setUrl((u = URL.createObjectURL(b)));
-      }),
-    );
-    return () => {
-      if (u) URL.revokeObjectURL(u);
-    };
-  }, [img]);
-  return url ? <Lightbox src={url} onClose={onClose} /> : null;
-}
 
 export function ImportView({ shared }: { shared?: boolean }) {
   const st = useImport();
@@ -33,15 +15,10 @@ export function ImportView({ shared }: { shared?: boolean }) {
   const cameraInput = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [cropping, setCropping] = useState<PendingImage | null>(null);
-  const [preview, setPreview] = useState<PendingImage | null>(null);
   const [pasteMode, setPasteMode] = useState(false);
   const [pasteText, setPasteText] = useState('');
 
-  // Texterkennung schon mal im Hintergrund laden, sobald Bilder gewählt wurden
-  const hasImages = st.images.length > 0;
-  useEffect(() => {
-    if (hasImages) import('../ocr/ocr').then((m) => m.warmUpOcr()).catch(() => {});
-  }, [hasImages]);
+  const hasKey = claudeConfigured();
 
   // Über „Teilen“ empfangene Bilder abholen
   useEffect(() => {
@@ -71,10 +48,9 @@ export function ImportView({ shared }: { shared?: boolean }) {
     if (ok) navigate('/import/pruefen');
   };
 
-  const fromText = () => {
-    const d = parseRecipe(linesFromPlainText(pasteText));
-    startManual(d);
-    navigate('/import/pruefen');
+  const fromText = async () => {
+    const ok = await runText(pasteText);
+    if (ok) navigate('/import/pruefen');
   };
 
   return (
@@ -83,9 +59,18 @@ export function ImportView({ shared }: { shared?: boolean }) {
         <div>
           <div className="eyebrow">Neues Rezept</div>
           <h1 className="page-title">Importieren</h1>
-          <p className="lede">Screenshots werden direkt auf deinem Gerät gelesen. Nichts verlässt dein Handy.</p>
+          <p className="lede">Claude liest Screenshots und Fotos und macht daraus ein Rezept zum Prüfen.</p>
         </div>
       </div>
+
+      {!hasKey && (
+        <div className="notice">
+          <p>{NO_KEY_MESSAGE}</p>
+          <button className="btn" onClick={() => navigate('/mehr')}>
+            Zu den Einstellungen
+          </button>
+        </div>
+      )}
 
       <div
         className={`dropzone${over ? ' is-over' : ''}${st.images.length ? ' has-images' : ''}`}
@@ -119,9 +104,6 @@ export function ImportView({ shared }: { shared?: boolean }) {
                 <figcaption>
                   <button className="icon-btn sm" onClick={() => setCropping(img)} aria-label="Zuschneiden" disabled={st.running}>
                     <Icon name="crop" />
-                  </button>
-                  <button className="icon-btn sm" onClick={() => setPreview(img)} aria-label="Aufbereitetes Bild ansehen" title="So sieht die Texterkennung das Bild">
-                    <Icon name="sparkle" />
                   </button>
                   <button className="icon-btn sm" onClick={() => moveImage(img.id, -1)} aria-label="Nach vorne" disabled={i === 0 || st.running}>
                     <Icon name="back" />
@@ -176,7 +158,7 @@ export function ImportView({ shared }: { shared?: boolean }) {
 
       {st.images.length > 0 && (
         <button className="btn btn-primary btn-block btn-lg" onClick={start} disabled={st.running}>
-          <Icon name="sparkle" /> {st.running ? 'Erkenne Text …' : 'Text erkennen'}
+          <Icon name="sparkle" /> {st.running ? 'Claude liest …' : 'Rezept erkennen'}
         </button>
       )}
 
@@ -218,7 +200,7 @@ export function ImportView({ shared }: { shared?: boolean }) {
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
           />
-          <button className="btn btn-primary" onClick={fromText} disabled={!pasteText.trim()}>
+          <button className="btn btn-primary" onClick={fromText} disabled={!pasteText.trim() || st.running}>
             Auswerten
           </button>
         </div>
@@ -227,12 +209,10 @@ export function ImportView({ shared }: { shared?: boolean }) {
       <div className="tips">
         <h2>Tipps für gute Erkennung</h2>
         <ul>
-          <li>Mit eigenem Claude-Schlüssel (Mehr → Rezepterkennung) werden auch schwierige Vorlagen zuverlässig gelesen.</li>
-          <li>Screenshot in voller Auflösung, nicht gezoomt oder verkleinert.</li>
-          <li>Lange Rezepte: mehrere Screenshots nacheinander auswählen und „Ein Rezept“ wählen. Überlappungen werden erkannt.</li>
-          <li>Werbung, Fotos und Menüleisten mit „Zuschneiden“ entfernen.</li>
-          <li>Dunkle Screenshots (Dark Mode) werden automatisch umgekehrt.</li>
-          <li>Kochbuchseite fotografieren: gerade von oben, gutes Licht, ohne Schatten, danach zuschneiden.</li>
+          <li>Lange Rezepte: alle Screenshots auf einmal auswählen und „Ein Rezept“ wählen – Claude fügt sie zusammen.</li>
+          <li>Mehrere verschiedene Rezepte auf einmal: „Jedes Bild einzeln“ wählen.</li>
+          <li>Kochbuchseite fotografieren: möglichst gerade, gutes Licht. Mit „Zuschneiden“ nur das Rezept einrahmen.</li>
+          <li>Die Bilder werden zur Erkennung an Anthropic (Claude) geschickt.</li>
         </ul>
       </div>
 
@@ -247,7 +227,6 @@ export function ImportView({ shared }: { shared?: boolean }) {
           }}
         />
       )}
-      {preview && <PreviewProcessed img={preview} onClose={() => setPreview(null)} />}
     </div>
   );
 }

@@ -5,12 +5,11 @@ import type { Category, Ingredient, RecipeDraft } from '../types';
 import { ingredientToLine, parseIngredientLine } from '../lib/ingredientParser';
 import { parseLeadingQuantity } from '../lib/quantity';
 import { UNITS, lookupUnit } from '../lib/units';
-import { linesFromPlainText, parseRecipe } from '../lib/recipeParser';
 import { uid } from '../lib/id';
 import { addCategory } from '../db/repo';
 import { Icon } from './Icon';
 import { Lightbox } from './Lightbox';
-import { confirmDialog, toast, useObjectUrl } from './ui';
+import { toast, useObjectUrl } from './ui';
 import { resizePhoto } from '../lib/image';
 import { creditOf, downloadPhoto, findPhotos, type PhotoCredit, type PhotoSuggestion } from '../lib/photoSearch';
 
@@ -264,8 +263,6 @@ export function RecipeEditor({
   const [textMode, setTextMode] = useState(false);
   const [bulk, setBulk] = useState('');
   const [showOriginal, setShowOriginal] = useState(true);
-  const [showOcr, setShowOcr] = useState(false);
-  const [ocrText, setOcrText] = useState(value.ocrText);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [newCat, setNewCat] = useState('');
   const set = (patch: Partial<RecipeDraft>) => onChange({ ...value, ...patch });
@@ -300,16 +297,6 @@ export function RecipeEditor({
     setTextMode(false);
   };
 
-  const reparse = async () => {
-    const ok = await confirmDialog({
-      title: 'Text neu auswerten?',
-      text: 'Titel, Portionen, Zutaten und Schritte werden aus dem (bearbeiteten) Erkennungstext neu erzeugt. Deine Änderungen an diesen Feldern gehen verloren.',
-      confirm: 'Neu auswerten',
-    });
-    if (!ok) return;
-    const d = parseRecipe(linesFromPlainText(ocrText));
-    onChange({ ...d, categoryIds: value.categoryIds, ocrText });
-  };
 
   return (
     <div className={`editor${imageUrls.length ? ' has-images' : ''}`}>
@@ -513,15 +500,6 @@ export function RecipeEditor({
           <textarea className="textarea" rows={3} value={value.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} placeholder="Tipps, Varianten, Quelle …" />
         </label>
 
-        {value.ocrText && (
-          <details className="ocr-raw" open={showOcr} onToggle={(e) => setShowOcr((e.target as HTMLDetailsElement).open)}>
-            <summary>Erkannter Rohtext</summary>
-            <textarea className="textarea mono" rows={12} value={ocrText} onChange={(e) => setOcrText(e.target.value)} />
-            <button type="button" className="btn" onClick={reparse}>
-              <Icon name="refresh" /> Aus Text neu auswerten
-            </button>
-          </details>
-        )}
 
         <div className="editor-footer">{footer}</div>
       </div>

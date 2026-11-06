@@ -137,10 +137,10 @@ check('B: Beispielrezepte nicht doppelt', tB.length === 8, `${tB.length} Rezepte
 
 // 3) A legt ein Rezept mit Foto an → B bekommt es samt Foto
 await A.goto(`${BASE}#/import`);
-await A.getByRole('button', { name: /Text einfügen/ }).click();
-await A.locator('.paste-box textarea').fill('Testrezept Sync\nZutaten\n200 g Mehl\n2 Eier\nZubereitung\nAlles verrühren und backen.');
-await A.getByRole('button', { name: 'Auswerten' }).click();
+await A.getByRole('button', { name: /Von Hand anlegen/ }).click();
 await A.waitForSelector('.photo-field');
+await A.locator('.input-title').fill('Testrezept Sync');
+await A.locator('.step-row textarea').first().fill('Alles verrühren und backen.');
 await A.locator('.photo-field ~ input[type=file]:not([capture])').setInputFiles(join(dir, 'fixtures', 'social-post.jpg'));
 await A.waitForSelector('.photo-field img');
 await A.getByRole('button', { name: /^Verwerfen$|Speichern/ }).last().click();

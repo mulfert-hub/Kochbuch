@@ -45,7 +45,7 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
   const body = JSON.parse(req.postData());
   seen.push({ body, headers: h });
   if (mode === 'rate') return route.fulfill({ status: 429, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'slow down' } }) });
-  const out = mode === 'norecipe' ? { ...RECIPE, is_recipe: false, ingredients: [], steps: [] } : RECIPE;
+  const out = mode === 'norecipe' ? { ...RECIPE, is_recipe: false, ingredients: [], steps: [] } : mode === 'notitle' ? { ...RECIPE, title: '' } : RECIPE;
   return route.fulfill({
     status: 200,
     headers: { ...cors, 'content-type': 'application/json' },
@@ -55,6 +55,15 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
+
+// Ohne Schlüssel: Hinweis statt Erkennung
+await p.goto(`${BASE}#/import`);
+check('Ohne Schlüssel: Hinweis auf der Importseite', (await p.locator('.notice').textContent()).includes('API-Schlüssel'));
+await p.setInputFiles('input[type=file][multiple]', [join(dir, 'fixtures', 'echt-chatgpt.jpg')]);
+await p.getByRole('button', { name: /Rezept erkennen/ }).click();
+await p.waitForSelector('.error');
+check('Ohne Schlüssel: keine Anfrage, klare Meldung', seen.length === 0 && (await p.locator('.error').textContent()).includes('API-Schlüssel'));
+await p.evaluate(() => location.reload());
 
 // Schlüssel eintragen (falscher wird abgelehnt)
 await p.goto(`${BASE}#/mehr`);
@@ -70,7 +79,7 @@ check('Richtiger Schlüssel wird gespeichert', true);
 // Import mit Claude
 await p.goto(`${BASE}#/import`);
 await p.setInputFiles('input[type=file][multiple]', [join(dir, 'fixtures', 'echt-chatgpt.jpg')]);
-await p.getByRole('button', { name: /Text erkennen/ }).click();
+await p.getByRole('button', { name: /Rezept erkennen/ }).click();
 await p.waitForSelector('.editor', { timeout: 30000 });
 const req = seen[0];
 check('Anfrage an Claude Opus 5.5 mit Bild und strukturierter Ausgabe', req.body.model === 'claude-opus-5-5' && req.body.messages[0].content[0].type === 'image' && req.body.output_config?.format?.type === 'json_schema');
@@ -85,12 +94,24 @@ await p.getByRole('button', { name: /Speichern/ }).last().click();
 await p.waitForSelector('.recipe-title');
 check('Rezept gespeichert', (await p.locator('.recipe-title').textContent()) === 'Hirse-Apfel-Brei');
 
+// Text einfügen → Claude (ohne Rezeptnamen → leerer Titel mit Hinweis)
+mode = 'notitle';
+await p.goto(`${BASE}#/import`);
+await p.getByRole('button', { name: /Text einfügen/ }).click();
+await p.locator('.paste-box textarea').fill('30 g Hirse, ½ Apfel, 120 ml Wasser. Hirse mit Wasser köcheln, Apfel reiben und mitköcheln.');
+await p.getByRole('button', { name: 'Auswerten' }).click();
+await p.waitForSelector('.editor', { timeout: 30000 });
+const last = seen[seen.length - 1];
+check('Text einfügen: Text geht an Claude (ohne Bild)', last.body.messages[0].content.every((c) => c.type === 'text') && last.body.messages[0].content[0].text.includes('Hirse'));
+check('Kein Titel im Text → Feld leer + Hinweis', (await p.locator('.input-title').inputValue()) === '' && (await p.locator('.confidence').textContent()).includes('kein Rezeptname'));
+mode = 'ok';
+
 // Fehlerfälle
 for (const [m, expect] of [['rate', 'Zu viele Anfragen'], ['norecipe', 'kein Rezept']]) {
   mode = m;
   await p.goto(`${BASE}#/import`);
   await p.setInputFiles('input[type=file][multiple]', [join(dir, 'fixtures', 'social-post.jpg')]);
-  await p.getByRole('button', { name: /Text erkennen/ }).click();
+  await p.getByRole('button', { name: /Rezept erkennen/ }).click();
   await p.waitForSelector('.error', { timeout: 60000 });
   check(`Fehlermeldung: ${expect}`, (await p.locator('.error').textContent()).includes(expect), await p.locator('.error').textContent());
   await p.evaluate(() => location.reload());
@@ -102,7 +123,7 @@ const before = seen.length;
 await p.goto(`${BASE}#/import`);
 await ctx.setOffline(true);
 await p.setInputFiles('input[type=file][multiple]', [join(dir, 'fixtures', 'echt-chatgpt.jpg')]);
-await p.getByRole('button', { name: /Text erkennen/ }).click();
+await p.getByRole('button', { name: /Rezept erkennen/ }).click();
 await p.waitForSelector('.error', { timeout: 20000 });
 await ctx.setOffline(false);
 check('Offline: verständliche Meldung, keine Anfrage', seen.length === before && (await p.locator('.error').textContent()).includes('Internet'));
