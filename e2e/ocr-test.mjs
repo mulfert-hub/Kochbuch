@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const dir = dirname(fileURLToPath(import.meta.url));
 const truth = JSON.parse(readFileSync(join(dir, 'ground-truth.json'), 'utf8'));
 const PORT = 4183;
+const BASE = process.env.BASE_PATH ?? '/';
 const outDir = join(dir, 'output');
 mkdirSync(outDir, { recursive: true });
 
@@ -18,7 +19,7 @@ const stop = () => server.kill();
 process.on('exit', stop);
 for (let i = 0; i < 50; i++) {
   try {
-    await fetch(`http://localhost:${PORT}/`);
+    await fetch(`http://localhost:${PORT}${BASE}`);
     break;
   } catch {
     await new Promise((r) => setTimeout(r, 200));
@@ -47,7 +48,7 @@ const report = [];
 for (const [name, gt] of Object.entries(truth)) {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   const page = await ctx.newPage();
-  await page.goto(`http://localhost:${PORT}/#/import`);
+  await page.goto(`http://localhost:${PORT}${BASE}#/import`);
   await page.waitForSelector('.dropzone');
   await page.setInputFiles('input[type=file][accept="image/*"]', gt.files.map((f) => join(dir, 'fixtures', f)));
   const t0 = Date.now();
