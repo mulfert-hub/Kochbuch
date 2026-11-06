@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 393px; font-family: Inter, sans-serif; background: #fff; color: #1c1c1e; -webkit-font-smoothing: antialiased; }
+  .status { position: sticky; top: 0; height: 47px; display: flex; justify-content: space-between; align-items: center; padding: 0 28px 0 34px; font-weight: 600; font-size: 16px; background: #fff; z-index: 3; }
+  .status .r { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .bat { width: 25px; height: 12px; border: 1.5px solid #1c1c1e; border-radius: 3px; position: relative; }
+  .bat::after { content: ''; position: absolute; inset: 1.5px 6px 1.5px 1.5px; background: #1c1c1e; border-radius: 1px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; padding: 6px 16px 10px; color: #2f7d4f; font-size: 17px; }
+  .hero { height: 250px; margin: 0 16px; border-radius: 18px; background: linear-gradient(135deg, #e9a23b, #c0582b 60%, #6b8f3c); }
+  h1 { font-size: 28px; line-height: 1.15; margin: 18px 20px 8px; font-weight: 700; letter-spacing: -0.02em; }
+  .meta { display: flex; gap: 14px; margin: 0 20px 18px; color: #6e6e73; font-size: 14.5px; }
+  .card { margin: 0 16px 16px; background: #f4f6f3; border-radius: 16px; padding: 16px 18px; }
+  h2 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
+  .sub { display: flex; justify-content: space-between; align-items: center; color: #6e6e73; font-size: 14px; margin-bottom: 8px; }
+  .stepper { display: flex; gap: 14px; align-items: center; color: #1c1c1e; font-weight: 600; font-size: 16px; }
+  .stepper b { width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-weight: 500; color: #2f7d4f; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  td { padding: 9px 0; border-bottom: 1px solid #e1e5df; vertical-align: top; }
+  td.a { width: 92px; text-align: right; padding-right: 16px; font-weight: 600; white-space: nowrap; }
+  .step { margin: 0 16px 14px; padding: 4px 4px 4px 4px; }
+  .step .n { color: #2f7d4f; font-weight: 700; font-size: 14px; letter-spacing: .02em; text-transform: uppercase; margin-bottom: 4px; }
+  .step p { margin: 0; font-size: 16px; line-height: 1.5; color: #2c2c2e; }
+  .sec { margin: 22px 20px 10px; }
+  .tab { position: sticky; bottom: 0; height: 83px; background: rgba(255,255,255,.96); border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding-top: 10px; font-size: 11px; color: #8e8e93; }
+  .tab span::before { content: ''; display: block; width: 26px; height: 22px; margin: 0 auto 4px; border-radius: 6px; background: #c7c7cc; }
+  .btn { margin: 4px 16px 18px; height: 48px; border-radius: 12px; background: #2f7d4f; color: #fff; display: grid; place-items: center; font-weight: 600; }
+</style></head>
+<body>
+  <div class="status"><span>9:41</span><span class="r">5G <span class="bat"></span></span></div>
+  <div class="bar"><span>‹ Zurück</span><span>Teilen</span></div>
+  <div class="hero"></div>
+  <h1>Linsencurry mit Spinat und Kokosmilch</h1>
+  <div class="meta"><span>⏱ 35 Min.</span><span>Einfach</span><span>Vegan</span></div>
+  <div class="card">
+    <h2>Zutaten</h2>
+    <div class="sub"><span>für 4 Portionen</span><span class="stepper"><b>−</b>4<b>+</b></span></div>
+    <table>
+      <tr><td class="a">250 g</td><td>rote Linsen</td></tr>
+      <tr><td class="a">1</td><td>Zwiebel</td></tr>
+      <tr><td class="a">2</td><td>Knoblauchzehen</td></tr>
+      <tr><td class="a">1 Stück</td><td>Ingwer (ca. 3 cm)</td></tr>
+      <tr><td class="a">2 EL</td><td>Kokosöl</td></tr>
+      <tr><td class="a">1 ½ TL</td><td>Currypulver</td></tr>
+      <tr><td class="a">1 TL</td><td>Kurkuma</td></tr>
+      <tr><td class="a">400 ml</td><td>Kokosmilch</td></tr>
+      <tr><td class="a">500 ml</td><td>Gemüsebrühe</td></tr>
+      <tr><td class="a">1 Dose</td><td>gehackte Tomaten</td></tr>
+      <tr><td class="a">150 g</td><td>Babyspinat</td></tr>
+      <tr><td class="a">½</td><td>Limette, Saft davon</td></tr>
+      <tr><td class="a"></td><td>Salz und Pfeffer</td></tr>
+    </table>
+  </div>
+  <div class="btn">Auf die Einkaufsliste</div>
+  <div class="sec"><h2>Zubereitung</h2></div>
+  <div class="step"><div class="n">Schritt 1</div><p>Zwiebel, Knoblauch und Ingwer schälen und fein hacken. Die Linsen in einem Sieb gründlich abspülen.</p></div>
+  <div class="step"><div class="n">Schritt 2</div><p>Kokosöl in einem großen Topf erhitzen. Zwiebel, Knoblauch und Ingwer darin 3 Minuten andünsten. Curry und Kurkuma zugeben und kurz mitrösten.</p></div>
+  <div class="step"><div class="n">Schritt 3</div><p>Linsen, Kokosmilch, Brühe und Tomaten zugeben. Alles aufkochen und bei mittlerer Hitze etwa 20 Minuten köcheln lassen, bis die Linsen weich sind.</p></div>
+  <div class="step"><div class="n">Schritt 4</div><p>Den Spinat unterheben und zusammenfallen lassen. Mit Limettensaft, Salz und Pfeffer abschmecken und mit Reis oder Naanbrot servieren.</p></div>
+  <div style="height:120px"></div>
+  <div class="tab"><span>Entdecken</span><span>Suche</span><span>Favoriten</span><span>Profil</span></div>
+</body></html>
