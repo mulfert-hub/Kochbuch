@@ -37,6 +37,8 @@ describe('Ist der erkannte Titel brauchbar?', () => {
     ['Ich würde den Apfel allerdings vorher', false],
     ['Neues Rezept', false],
     ['Zutaten:', false],
+    ['De) kochliebeanna', false],
+    ['kochliebe_anna Schnelle Ofen-Gnocchi', false],
   ])('%s → %s', (t, ok) => expect(isPlausibleTitle(t)).toBe(ok));
 });
 

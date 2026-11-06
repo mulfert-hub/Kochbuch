@@ -27,11 +27,12 @@ Alle Bilder haben iPhone-Auflösung (1179 × 2556 px). Echte Fotos von Papier ko
 |---|---|---|---|---|---|
 | App, 3 Screenshots | ✓ | ✓ | ✓ | **13 / 13** | 4 / 4, 100 % Text |
 | Blog Dark Mode, 2 Screenshots | ✓ | ✓ | ✓ | **10 / 10** | 4 / 4, 100 % Text, Tipp → Notiz ✓ |
-| Social-Media-Post | ✗ | ✓ | – | **6 / 6** | 4 / 4 (letzter mit „Guten Appetit!“) |
+| Social-Media-Post | abgeleitet² | ✓ | – | **6 / 6** | 4 / 4 (letzter mit „Guten Appetit!“) |
 | Echter ChatGPT-Screenshot | ✓ | – | – | **4 / 4** | 4 / 4, Tipp → Notiz ✓ |
 | Buchseite (Foto) | ✓ | ✓ | ✓ | **7 / 11** | 3 / 4 (zwei Absätze verschmolzen) |
 
 ¹ Menge, Einheit und Name stimmen alle.
+² Kein Rezeptname erkennbar (nur Benutzername) → aus den Zutaten abgeleitet: „Gnocchi-Tomaten-Auflauf“ (Original: „Schnelle Ofen-Gnocchi mit Kirschtomaten“).
 Dauer im Desktop-Browser: 2,5 bis 5 s pro Rezept. Auf dem Handy rechne ich mit dem 2- bis 4-Fachen.
 
 ### Ehrlicher Hinweis zur Aussagekraft
@@ -63,7 +64,7 @@ Der Rohtext ist als Unit-Test hinterlegt (`tests/real-chatgpt.test.ts`).
 
 ## Wo die Erkennung Fehler macht
 
-1. **Titel bei Social-Media-Posts**: Der Titel steht dort mitten in der Bildunterschrift hinter dem Benutzernamen. Die App nimmt dann den Benutzernamen („kochliebe_anna“). → Titel im Prüfbildschirm korrigieren.
+1. **Titel bei Social-Media-Posts**: Der Titel steht dort mitten in der Bildunterschrift hinter dem Benutzernamen und wird nicht erkannt. Die App leitet dann einen Titel aus den Zutaten ab (z. B. „Gnocchi-Tomaten-Auflauf“). → Bei Bedarf im Prüfbildschirm anpassen.
 2. **Unscharfe Fotos**: Einzelne Ziffern werden falsch gelesen, zum Beispiel „2“ als „e“ oder „1“ als „;“. Die Zeile verliert dann ihre Menge oder wird an die vorige Zutat angehängt („2 Gewürzgurken e Zwiebeln“).
 3. **Umbrochene Zutaten**: „2 EL mittelscharfer / Senf“ über zwei Zeilen wird zu zwei Zutaten, weil „Senf“ großgeschrieben ist und wie eine eigene Zutat ohne Menge aussieht (etwa „Salz“).
 4. **Brüche in kleiner Schrift**: „½“ wird manchmal als „Y%“, „%“ oder „Vz“ gelesen. „%“ und „Vz“ korrigiert die App, „Y%“ nicht.

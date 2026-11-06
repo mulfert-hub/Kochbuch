@@ -97,6 +97,8 @@ export function isPlausibleTitle(title: string): boolean {
   if (t === 'Neues Rezept') return false;
   if (/[.!?]\s*\S|[.!?:,;]$/.test(t)) return false;
   if (t.split(/\s+/).length > 8) return false;
+  // Benutzernamen („kochliebe_anna“, „@anna“) und OCR-Reste („De)“, „|“)
+  if (/[_@#|]/.test(t) || (/\)/.test(t) && !/\(/.test(t))) return false;
   if (/^(?:ja|nein|klar|gerne|natürlich|hier|super|okay|ok|hallo|hi|danke|also|genau|wenn|ich|du|wir|das|es)\b/i.test(t)) return false;
   return /\p{Lu}/u.test(t.charAt(0));
 }
