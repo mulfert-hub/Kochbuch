@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#b4462a"/>
+  <g fill="none" stroke="#fbf3e8" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <!-- aufgeschlagenes Buch -->
+    <path d="M256 168c-36-26-86-34-132-28v214c46-6 96 2 132 28 36-26 86-34 132-28V140c-46-6-96 2-132 28z" fill="#fbf3e8" fill-opacity=".12"/>
+    <path d="M256 168v214"/>
+  </g>
+  <!-- Zweig -->
+  <g fill="#fbf3e8">
+    <path d="M318 214c0-22 18-40 40-40 0 22-18 40-40 40z"/>
+    <path d="M318 262c0-22 18-40 40-40 0 22-18 40-40 40z"/>
+    <path d="M318 262c-22 0-40-18-40-40 22 0 40 18 40 40z"/>
+  </g>
+  <path d="M318 190v122" stroke="#fbf3e8" stroke-width="10" stroke-linecap="round"/>
+  <g stroke="#fbf3e8" stroke-width="14" stroke-linecap="round" opacity=".85">
+    <path d="M160 214h56M160 254h56M160 294h40"/>
+  </g>
+</svg>
