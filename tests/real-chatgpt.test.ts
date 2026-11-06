@@ -48,3 +48,15 @@ describe('echter ChatGPT-Screenshot', () => {
   it('Tipp als Notiz ohne UI-Reste', () =>
     expect(r.notes).toBe('Wenn der Apfel säuerlich ist, kannst du etwas Birne oder Banane ergänzen. Apfel allein funktioniert aber genauso gut.'));
 });
+
+// Gleicher Screenshot in voller Auflösung (aus der Fotos-App): dort liest Tesseract „½“ als nacktes „Y“
+describe('echter ChatGPT-Screenshot, volle Auflösung', () => {
+  const r = parseRecipe(linesFromPlainText(RAW.replace('e 309g Hirse', 'e 30 g Hirse').replace('e Y% kleiner Apfel', 'e Y kleiner Apfel')));
+  it('½ kleiner Apfel getrennt erkannt', () =>
+    expect(r.ingredients.map((i) => [i.quantity, i.unit, i.name])).toEqual([
+      [30, 'g', 'Hirse'],
+      [0.5, '', 'kleiner Apfel'],
+      [120, 'ml', 'Wasser'],
+      [1, 'TL', 'Rapsöl'],
+    ]));
+});

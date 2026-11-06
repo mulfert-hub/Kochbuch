@@ -126,6 +126,11 @@ export function RecipeArticle({
 
   return (
     <article className="recipe">
+      {recipe.photoId && (
+        <button className="recipe-photo" onClick={() => setLightbox(recipe.photoId!)} aria-label="Foto vergrößern">
+          <StoredImage id={recipe.photoId} alt={recipe.title} />
+        </button>
+      )}
       <header className="recipe-head">
         <div className="eyebrow">{cats.length ? cats.map((c) => c.name).join(' · ') : 'Rezept'}</div>
         <h1 className="recipe-title">{recipe.title}</h1>

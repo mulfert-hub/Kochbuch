@@ -7,7 +7,7 @@ import { back, navigate } from '../router';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { Icon } from '../components/Icon';
 import { confirmDialog, toast } from '../components/ui';
-import { addImagesToRecipe, deleteRecipe, removeImage, updateRecipe } from '../db/repo';
+import { addImagesToRecipe, deleteRecipe, removeImage, setRecipePhoto, updateRecipe } from '../db/repo';
 import type { Recipe, RecipeDraft } from '../types';
 
 function toDraft(r: Recipe): RecipeDraft {
@@ -32,17 +32,32 @@ export function EditView({ id }: { id: string }) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (recipe && !draft) setDraft(toDraft(recipe));
+    if (!recipe || draft) return;
+    // Vorhandenes Foto in den Entwurf laden
+    (async () => {
+      const photo = recipe.photoId ? (await db.images.get(recipe.photoId))?.blob : undefined;
+      setDraft({ ...toDraft(recipe), photo });
+    })();
   }, [recipe, draft]);
+  const [originalPhoto, setOriginalPhoto] = useState<Blob | undefined | null>(null);
+  useEffect(() => {
+    if (draft && originalPhoto === null) setOriginalPhoto(draft.photo);
+  }, [draft, originalPhoto]);
 
-  const urls = useMemo(() => (images ?? []).map((i) => ({ id: i.id, url: URL.createObjectURL(i.blob) })), [images]);
+  // Nur Screenshots/Anhänge anzeigen, nicht das Foto vom Gericht
+  const urls = useMemo(
+    () => (images ?? []).filter((i) => i.id !== recipe?.photoId).map((i) => ({ id: i.id, url: URL.createObjectURL(i.blob) })),
+    [images, recipe?.photoId],
+  );
   useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u.url)), [urls]);
 
   if (recipe === undefined || !categories) return null;
   if (recipe === null || !draft) return <div className="page"><div className="empty"><h2>Rezept nicht gefunden</h2></div></div>;
 
   const save = async () => {
-    await updateRecipe(id, { ...draft, title: draft.title.trim() || 'Ohne Titel' });
+    const { photo, confidence: _c, ...fields } = draft;
+    await updateRecipe(id, { ...fields, title: fields.title.trim() || 'Ohne Titel' });
+    if (photo !== originalPhoto) await setRecipePhoto(id, photo ?? null);
     toast('Änderungen gespeichert');
     navigate(`/rezepte/${id}`, { replace: true });
   };

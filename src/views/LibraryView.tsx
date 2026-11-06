@@ -188,7 +188,7 @@ export function LibraryView({ recipeId }: { recipeId?: string }) {
                       {sn ?? [cats.join(', ') || 'Ohne Kategorie', `${r.ingredients.length} Zutaten`].join(' · ')}
                     </span>
                   </span>
-                  {r.imageIds[0] ? <StoredImage id={r.imageIds[0]} alt="" className="recipe-row-img" /> : null}
+                  {r.photoId || r.imageIds[0] ? <StoredImage id={(r.photoId || r.imageIds[0])!} alt="" className="recipe-row-img" /> : null}
                 </button>
               </li>
             );

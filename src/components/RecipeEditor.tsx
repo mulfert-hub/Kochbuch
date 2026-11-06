@@ -1,6 +1,6 @@
 // Formular zum Prüfen/Korrigieren (nach OCR) und Bearbeiten von Rezepten.
 // Originalbilder werden daneben (Desktop) bzw. ausklappbar oben (Handy) angezeigt.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Category, Ingredient, RecipeDraft } from '../types';
 import { ingredientToLine, parseIngredientLine } from '../lib/ingredientParser';
 import { parseLeadingQuantity } from '../lib/quantity';
@@ -10,7 +10,52 @@ import { uid } from '../lib/id';
 import { addCategory } from '../db/repo';
 import { Icon } from './Icon';
 import { Lightbox } from './Lightbox';
-import { confirmDialog } from './ui';
+import { confirmDialog, toast, useObjectUrl } from './ui';
+import { resizePhoto } from '../lib/image';
+
+/** Foto vom fertigen Gericht: aufnehmen (Kamera) oder aus der Mediathek wählen */
+function PhotoField({ photo, onChange }: { photo: Blob | null | undefined; onChange: (p: Blob | null) => void }) {
+  const url = useObjectUrl(photo ?? null);
+  const camera = useRef<HTMLInputElement>(null);
+  const library = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setBusy(true);
+    try {
+      onChange(await resizePhoto(f));
+    } catch {
+      toast('Das Foto konnte nicht geladen werden');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="field">
+      <span>Foto vom Gericht</span>
+      <div className={`photo-field${url ? ' has-photo' : ''}`}>
+        {url ? <img src={url} alt="Foto vom Gericht" /> : <div className="photo-empty"><Icon name="image" /></div>}
+        <div className="photo-actions">
+          <button type="button" className="btn" onClick={() => camera.current?.click()} disabled={busy}>
+            <Icon name="camera" /> Foto aufnehmen
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => library.current?.click()} disabled={busy}>
+            <Icon name="image" /> Aus Fotos
+          </button>
+          {url && (
+            <button type="button" className="btn btn-ghost" onClick={() => onChange(null)}>
+              <Icon name="trash" /> Entfernen
+            </button>
+          )}
+        </div>
+      </div>
+      <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
+      <input ref={library} type="file" accept="image/*" hidden onChange={pick} />
+    </div>
+  );
+}
 
 function qtyToText(q: number | null, max?: number | null): string {
   if (q == null) return '';
@@ -196,6 +241,8 @@ export function RecipeEditor({
           <span>Titel</span>
           <input className="input input-title" value={value.title} onChange={(e) => set({ title: e.target.value })} placeholder="Name des Rezepts" />
         </label>
+
+        <PhotoField photo={value.photo} onChange={(photo) => set({ photo })} />
 
         <div className="field-row">
           <label className="field">

@@ -18,7 +18,12 @@ export async function createRecipe(draft: RecipeDraft, images: Blob[] = []): Pro
   const id = uid();
   const now = Date.now();
   const imageIds: string[] = [];
+  let photoId: string | null = null;
   await db.transaction('rw', db.recipes, db.images, async () => {
+    if (draft.photo) {
+      photoId = uid();
+      await db.images.add({ id: photoId, recipeId: id, blob: draft.photo, type: draft.photo.type || 'image/jpeg', createdAt: now });
+    }
     for (const blob of images) {
       const imgId = uid();
       imageIds.push(imgId);
@@ -35,6 +40,7 @@ export async function createRecipe(draft: RecipeDraft, images: Blob[] = []): Pro
       notes: draft.notes?.trim() || undefined,
       timeMinutes: draft.timeMinutes ?? null,
       imageIds,
+      photoId,
       ocrText: draft.ocrText || undefined,
       createdAt: now,
       updatedAt: now,
@@ -52,6 +58,21 @@ export async function updateRecipe(id: string, patch: Partial<Recipe>): Promise<
   if (clean.ingredients) clean.ingredients = cleanIngredients(clean.ingredients);
   if (clean.steps) clean.steps = clean.steps.map((s) => s.trim()).filter(Boolean);
   await db.recipes.update(id, { ...clean, updatedAt: Date.now() });
+}
+
+/** Foto vom Gericht setzen (Blob) oder entfernen (null). */
+export async function setRecipePhoto(id: string, photo: Blob | null): Promise<void> {
+  const r = await db.recipes.get(id);
+  if (!r) return;
+  await db.transaction('rw', db.recipes, db.images, async () => {
+    if (r.photoId) await db.images.delete(r.photoId);
+    let photoId: string | null = null;
+    if (photo) {
+      photoId = uid();
+      await db.images.add({ id: photoId, recipeId: id, blob: photo, type: photo.type || 'image/jpeg', createdAt: Date.now() });
+    }
+    await db.recipes.update(id, { photoId, updatedAt: Date.now() });
+  });
 }
 
 export async function deleteRecipe(id: string): Promise<void> {

@@ -263,9 +263,17 @@ function parseSteps(lines: OcrLine[]): { steps: string[]; notes: string[] } {
   return { steps, notes };
 }
 
-function parseIngredients(lines: OcrLine[]): Ingredient[] {
+function parseIngredients(input: OcrLine[]): Ingredient[] {
   const out: Ingredient[] = [];
   let group: string | undefined;
+
+  // Aufzählungspunkte, die OCR als „e“, „o“ oder „°“ liest: Wenn mehrere Zeilen so beginnen,
+  // ist es eine Liste, und das Zeichen wird überall entfernt (sonst gelten „e …“-Zeilen als Fortsetzung)
+  const bulletRe = /^[eo°*»]\s+/;
+  const lines =
+    input.filter((l) => bulletRe.test(l.text.trim())).length >= 2
+      ? input.map((l) => ({ ...l, text: l.text.trim().replace(bulletRe, '') }))
+      : input;
 
   // Spalten-Layout: erst alle Mengen, dann alle Namen → paarweise zusammenführen
   const pure = lines.filter((l) => isPureQuantity(l.text));

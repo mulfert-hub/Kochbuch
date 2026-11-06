@@ -30,6 +30,8 @@ export interface Recipe {
   timeMinutes?: number | null;
   /** IDs der angehängten Originalbilder (Tabelle images). */
   imageIds: string[];
+  /** Foto vom fertigen Gericht (Tabelle images), wird groß im Rezept angezeigt. */
+  photoId?: string | null;
   /** Roher OCR-Text, falls aus Screenshot importiert. */
   ocrText?: string;
   createdAt: number;
@@ -78,6 +80,8 @@ export interface RecipeDraft {
   timeMinutes?: number | null;
   categoryIds: string[];
   ocrText: string;
+  /** Foto vom Gericht: Blob = neu/geändert, null = entfernen, undefined = unverändert */
+  photo?: Blob | null;
   /** Wie sicher die Heuristik ist (0–1) – nur zur Anzeige. */
   confidence?: number;
 }

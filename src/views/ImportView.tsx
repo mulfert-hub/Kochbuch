@@ -30,6 +30,7 @@ function PreviewProcessed({ img, onClose }: { img: PendingImage; onClose: () => 
 export function ImportView({ shared }: { shared?: boolean }) {
   const st = useImport();
   const input = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [cropping, setCropping] = useState<PendingImage | null>(null);
   const [preview, setPreview] = useState<PendingImage | null>(null);
@@ -179,7 +180,21 @@ export function ImportView({ shared }: { shared?: boolean }) {
         </button>
       )}
 
+      <input
+        ref={cameraInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          addFiles(Array.from(e.target.files ?? []));
+          e.target.value = '';
+        }}
+      />
       <div className="import-alt">
+        <button className="btn btn-ghost" onClick={() => cameraInput.current?.click()} disabled={st.running}>
+          <Icon name="camera" /> Foto aufnehmen
+        </button>
         <button className="btn btn-ghost" onClick={() => setPasteMode(!pasteMode)}>
           <Icon name="text" /> Text einfügen
         </button>
@@ -216,6 +231,7 @@ export function ImportView({ shared }: { shared?: boolean }) {
           <li>Lange Rezepte: mehrere Screenshots nacheinander auswählen und „Ein Rezept“ wählen. Überlappungen werden erkannt.</li>
           <li>Werbung, Fotos und Menüleisten mit „Zuschneiden“ entfernen.</li>
           <li>Dunkle Screenshots (Dark Mode) werden automatisch umgekehrt.</li>
+          <li>Kochbuchseite fotografieren: gerade von oben, gutes Licht, ohne Schatten, danach zuschneiden.</li>
         </ul>
       </div>
 

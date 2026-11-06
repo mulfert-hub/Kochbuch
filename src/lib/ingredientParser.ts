@@ -12,6 +12,11 @@ export function normalizeOcrLine(line: string): string {
     .trim();
   // „%“, „Vz“, „Y%“ … werden häufig für „½“ gelesen (auch hinter einem Aufzählungspunkt)
   s = s.replace(/^((?:[•●*°oe]\s+)?)(?:%|Vz|Y2|V2|Y%|V%|Ye)(?=\s)/, '$1½');
+  // Ein einzelnes „Y“/„V“ vor einem klein geschriebenen Wort oder einer Einheit ist fast immer ein „½“
+  // („e Y kleiner Apfel“, „V TL Salz“)
+  s = s.replace(/^((?:[•●*°oe]\s+)?)[YV](?=\s+(\S+))/u, (m, pre, next: string) =>
+    /^\p{Ll}/u.test(next) || lookupUnit(next) ? `${pre}½` : m,
+  );
   // Aufzählungszeichen am Anfang entfernen
   s = s.replace(/^(?:[•●○◦▪▫■□·*»>✓✔☐☑°º«-]|[oe]\s(?=[\d½¼¾⅓⅔]))\s*/u, '');
   // „l EL“, „I TL“ → „1 EL“ (kleines L / großes I statt Eins vor einer Einheit)
