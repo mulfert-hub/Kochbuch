@@ -131,6 +131,26 @@ export function RecipeArticle({
           <StoredImage id={recipe.photoId} alt={recipe.title} />
         </button>
       )}
+      {recipe.photoId && recipe.photoCredit && (
+        <p className="photo-credit">
+          Beispielfoto: {recipe.photoCredit.creator} ·{' '}
+          {recipe.photoCredit.licenseUrl ? (
+            <a href={recipe.photoCredit.licenseUrl} target="_blank" rel="noreferrer">
+              {recipe.photoCredit.license}
+            </a>
+          ) : (
+            recipe.photoCredit.license
+          )}
+          {recipe.photoCredit.landingUrl && (
+            <>
+              {' · '}
+              <a href={recipe.photoCredit.landingUrl} target="_blank" rel="noreferrer">
+                Quelle
+              </a>
+            </>
+          )}
+        </p>
+      )}
       <header className="recipe-head">
         <div className="eyebrow">{cats.length ? cats.map((c) => c.name).join(' · ') : 'Rezept'}</div>
         <h1 className="recipe-title">{recipe.title}</h1>

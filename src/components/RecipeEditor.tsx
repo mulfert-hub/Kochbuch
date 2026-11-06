@@ -12,9 +12,87 @@ import { Icon } from './Icon';
 import { Lightbox } from './Lightbox';
 import { confirmDialog, toast, useObjectUrl } from './ui';
 import { resizePhoto } from '../lib/image';
+import { creditOf, downloadPhoto, findPhotos, type PhotoCredit, type PhotoSuggestion } from '../lib/photoSearch';
 
-/** Foto vom fertigen Gericht: aufnehmen (Kamera) oder aus der Mediathek wählen */
-function PhotoField({ photo, onChange }: { photo: Blob | null | undefined; onChange: (p: Blob | null) => void }) {
+/** Fotovorschläge aus freien Bilddatenbanken (Openverse) zum Rezepttitel */
+function PhotoSuggestions({ title, onPick, onClose }: { title: string; onPick: (b: Blob, c: PhotoCredit) => void; onClose: () => void }) {
+  const [state, setState] = useState<{ status: 'loading' | 'done' | 'error' | 'offline'; items: PhotoSuggestion[] }>({ status: 'loading', items: [] });
+  const [picking, setPicking] = useState<string | null>(null);
+  useEffect(() => {
+    if (!navigator.onLine) {
+      setState({ status: 'offline', items: [] });
+      return;
+    }
+    const ctrl = new AbortController();
+    setState({ status: 'loading', items: [] });
+    findPhotos(title, ctrl.signal)
+      .then((items) => setState({ status: 'done', items }))
+      .catch((e) => {
+        if ((e as Error).name !== 'AbortError') setState({ status: 'error', items: [] });
+      });
+    return () => ctrl.abort();
+  }, [title]);
+  return (
+    <div className="suggest">
+      <div className="suggest-head">
+        <span>Vorschläge aus freien Bilddatenbanken</span>
+        <button type="button" className="icon-btn sm" onClick={onClose} aria-label="Vorschläge schließen">
+          <Icon name="close" />
+        </button>
+      </div>
+      {state.status === 'loading' && <p className="hint">Suche Fotos zu „{title}“ …</p>}
+      {state.status === 'offline' && <p className="hint">Keine Internetverbindung.</p>}
+      {state.status === 'error' && <p className="hint">Die Bildersuche ist gerade nicht erreichbar. Bitte später erneut versuchen.</p>}
+      {state.status === 'done' && state.items.length === 0 && <p className="hint">Keine passenden Fotos gefunden. Versuch einen einfacheren Titel oder ein eigenes Foto.</p>}
+      {state.items.length > 0 && (
+        <div className="suggest-grid">
+          {state.items.map((s) => (
+            <button
+              type="button"
+              key={s.id}
+              className={`suggest-item${picking === s.id ? ' is-loading' : ''}`}
+              disabled={!!picking}
+              onClick={async () => {
+                setPicking(s.id);
+                try {
+                  onPick(await resizePhoto(await downloadPhoto(s)), creditOf(s));
+                } catch {
+                  toast('Das Foto konnte nicht geladen werden');
+                } finally {
+                  setPicking(null);
+                }
+              }}
+              aria-label={`Foto „${s.title}“ von ${s.creator} übernehmen`}
+            >
+              <img src={s.thumb} alt="" loading="lazy" />
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="hint">Beispielbilder zeigen ein ähnliches Gericht, nicht euer eigenes. Der Urheber wird beim Rezept vermerkt.</p>
+    </div>
+  );
+}
+
+/** Foto vom fertigen Gericht: aufnehmen (Kamera), aus der Mediathek wählen oder Vorschlag übernehmen */
+function PhotoField({
+  photo,
+  title,
+  autoSuggest,
+  onChange,
+}: {
+  photo: Blob | null | undefined;
+  title: string;
+  autoSuggest?: boolean;
+  onChange: (p: Blob | null, credit: PhotoCredit | null) => void;
+}) {
+  const [suggest, setSuggest] = useState(!!autoSuggest && !photo && title.trim().length > 2);
+  // Suchbegriff erst übernehmen, wenn der Titel eine Weile nicht mehr geändert wurde
+  const [query, setQuery] = useState(title.trim());
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(title.trim()), 900);
+    return () => clearTimeout(t);
+  }, [title]);
   const url = useObjectUrl(photo ?? null);
   const camera = useRef<HTMLInputElement>(null);
   const library = useRef<HTMLInputElement>(null);
@@ -25,7 +103,7 @@ function PhotoField({ photo, onChange }: { photo: Blob | null | undefined; onCha
     if (!f) return;
     setBusy(true);
     try {
-      onChange(await resizePhoto(f));
+      onChange(await resizePhoto(f), null);
     } catch {
       toast('Das Foto konnte nicht geladen werden');
     } finally {
@@ -44,13 +122,26 @@ function PhotoField({ photo, onChange }: { photo: Blob | null | undefined; onCha
           <button type="button" className="btn btn-ghost" onClick={() => library.current?.click()} disabled={busy}>
             <Icon name="image" /> Aus Fotos
           </button>
+          <button type="button" className="btn btn-ghost" onClick={() => setSuggest(!suggest)} disabled={busy || query.length < 3}>
+            <Icon name="sparkle" /> Vorschläge
+          </button>
           {url && (
-            <button type="button" className="btn btn-ghost" onClick={() => onChange(null)}>
+            <button type="button" className="btn btn-ghost" onClick={() => onChange(null, null)}>
               <Icon name="trash" /> Entfernen
             </button>
           )}
         </div>
       </div>
+      {suggest && query.length > 2 && (
+        <PhotoSuggestions
+          title={query}
+          onClose={() => setSuggest(false)}
+          onPick={(b, c) => {
+            onChange(b, c);
+            setSuggest(false);
+          }}
+        />
+      )}
       <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
       <input ref={library} type="file" accept="image/*" hidden onChange={pick} />
     </div>
@@ -160,7 +251,9 @@ export function RecipeEditor({
   imageUrls,
   footer,
   heading,
+  autoSuggestPhoto,
 }: {
+  autoSuggestPhoto?: boolean;
   value: RecipeDraft;
   onChange: (d: RecipeDraft) => void;
   categories: Category[];
@@ -242,7 +335,12 @@ export function RecipeEditor({
           <input className="input input-title" value={value.title} onChange={(e) => set({ title: e.target.value })} placeholder="Name des Rezepts" />
         </label>
 
-        <PhotoField photo={value.photo} onChange={(photo) => set({ photo })} />
+        <PhotoField
+          photo={value.photo}
+          title={value.title}
+          autoSuggest={autoSuggestPhoto}
+          onChange={(photo, photoCredit) => set({ photo, photoCredit })}
+        />
 
         <div className="field-row">
           <label className="field">

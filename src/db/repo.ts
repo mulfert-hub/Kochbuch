@@ -2,6 +2,7 @@
 import { db } from './db';
 import type { Category, Ingredient, Recipe, RecipeDraft, ShoppingItem } from '../types';
 import { uid } from '../lib/id';
+import type { PhotoCredit } from '../lib/photoSearch';
 import { mergeIntoList } from '../lib/shopping';
 import { parseIngredientLine } from '../lib/ingredientParser';
 
@@ -41,6 +42,7 @@ export async function createRecipe(draft: RecipeDraft, images: Blob[] = []): Pro
       timeMinutes: draft.timeMinutes ?? null,
       imageIds,
       photoId,
+      photoCredit: draft.photo ? (draft.photoCredit ?? null) : null,
       ocrText: draft.ocrText || undefined,
       createdAt: now,
       updatedAt: now,
@@ -61,7 +63,7 @@ export async function updateRecipe(id: string, patch: Partial<Recipe>): Promise<
 }
 
 /** Foto vom Gericht setzen (Blob) oder entfernen (null). */
-export async function setRecipePhoto(id: string, photo: Blob | null): Promise<void> {
+export async function setRecipePhoto(id: string, photo: Blob | null, credit: PhotoCredit | null = null): Promise<void> {
   const r = await db.recipes.get(id);
   if (!r) return;
   await db.transaction('rw', db.recipes, db.images, async () => {
@@ -71,7 +73,7 @@ export async function setRecipePhoto(id: string, photo: Blob | null): Promise<vo
       photoId = uid();
       await db.images.add({ id: photoId, recipeId: id, blob: photo, type: photo.type || 'image/jpeg', createdAt: Date.now() });
     }
-    await db.recipes.update(id, { photoId, updatedAt: Date.now() });
+    await db.recipes.update(id, { photoId, photoCredit: photo ? credit : null, updatedAt: Date.now() });
   });
 }
 

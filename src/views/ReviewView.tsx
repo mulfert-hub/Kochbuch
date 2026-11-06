@@ -72,6 +72,7 @@ export function ReviewView() {
         onChange={(d) => setDraft(st.current, d)}
         categories={categories}
         imageUrls={imageUrls}
+        autoSuggestPhoto
         heading={
           <div className="review-head">
             <div className="eyebrow">

@@ -1763,3 +1763,67 @@
   padding: 0 12px;
   font-size: 14.5px;
 }
+
+.photo-credit {
+  margin: -16px 0 20px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.photo-credit a {
+  color: inherit;
+}
+
+.suggest {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  display: grid;
+  gap: 10px;
+}
+
+.suggest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.suggest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.suggest-item {
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--line);
+  position: relative;
+}
+
+.suggest-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.suggest-item.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+@media (min-width: 600px) {
+  .suggest-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
