@@ -10,6 +10,9 @@ import { ImportView } from './views/ImportView';
 import { ReviewView } from './views/ReviewView';
 import { EditView } from './views/EditView';
 import { MoreView } from './views/MoreView';
+import { CookView } from './views/CookView';
+import { TodayView } from './views/TodayView';
+import { TimerBar } from './components/TimerBar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/db';
 
@@ -83,12 +86,25 @@ export function App() {
     case 'mehr':
       view = <MoreView />;
       break;
+    case 'heute':
+      view = <TodayView />;
+      break;
+    case 'kochen':
+      if (id) return (
+        <>
+          <CookView id={id} servings={query.get('p') ? Number(query.get('p')) : null} />
+          <TimerBar />
+          <ToastHost />
+        </>
+      );
+      break;
   }
 
   return (
     <div className={`app section-${section ?? 'buch'}`}>
       <Nav section={section ?? 'buch'} />
       <main className="app-main">{view}</main>
+      <TimerBar />
       <ToastHost />
       <ConfirmHost />
     </div>

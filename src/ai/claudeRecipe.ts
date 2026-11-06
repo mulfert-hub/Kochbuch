@@ -58,7 +58,7 @@ function client(apiKey = getApiKey()) {
 }
 
 // ---------- Antwortformat ----------
-const IngredientSchema = z.object({
+export const IngredientSchema = z.object({
   group: z.string().nullable().describe('Zwischenüberschrift wie „Für den Teig“, sonst null'),
   quantity: z.number().nullable().describe('Menge als Zahl (½ = 0.5), null wenn keine Menge angegeben'),
   quantity_max: z.number().nullable().describe('Obergrenze bei Spannen wie „2–3“, sonst null'),
@@ -67,7 +67,7 @@ const IngredientSchema = z.object({
   note: z.string().nullable().describe('Zusatz wie „fein gehackt“ oder „zimmerwarm“, sonst null'),
 });
 
-const RecipeSchema = z.object({
+export const RecipeSchema = z.object({
   is_recipe: z.boolean().describe('false, wenn auf den Bildern kein Rezept zu sehen ist'),
   title: z.string().describe('Rezeptname genau so, wie er im Bild steht; leerer Text, wenn kein Name erkennbar ist (nichts erfinden)'),
   servings: z.number().nullable(),
@@ -134,16 +134,23 @@ export async function recognizeWithClaude(
   return request(content, categories);
 }
 
-async function request(content: Anthropic.Beta.BetaContentBlockParam[], categories: Category[]): Promise<RecipeDraft> {
+/** Gemeinsamer Aufruf mit strukturierter Antwort und einheitlicher Fehlerbehandlung */
+export async function callClaude<S extends z.ZodType>(
+  schema: S,
+  system: string,
+  content: Anthropic.Beta.BetaContentBlockParam[],
+): Promise<z.infer<S>> {
+  if (!getApiKey()) throw new ClaudeError('Dafür wird Claude benötigt: unter „Mehr → Rezepterkennung mit Claude“ einen API-Schlüssel eintragen.', 'auth');
+  if (!navigator.onLine) throw new ClaudeError('Keine Internetverbindung. Claude braucht Internet.', 'network');
   const model = getModel();
   let res;
   try {
     res = await client().beta.messages.parse({
       model,
       max_tokens: 16000,
-      system: SYSTEM,
+      system,
       messages: [{ role: 'user', content }],
-      output_config: { effort: model === 'claude-opus-5-5' ? 'medium' : 'low', format: betaZodOutputFormat(RecipeSchema) },
+      output_config: { effort: model === 'claude-opus-5-5' ? 'medium' : 'low', format: betaZodOutputFormat(schema) },
       // Falls Claude eine Anfrage fälschlich ablehnt, versucht Anthropic sie automatisch mit einem passenden Ersatzmodell
       ...(model === 'claude-opus-5-5' ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     });
@@ -156,8 +163,13 @@ async function request(content: Anthropic.Beta.BetaContentBlockParam[], categori
     throw e;
   }
   if (res.stop_reason === 'refusal') throw new ClaudeError('Claude hat die Anfrage abgelehnt.', 'refusal');
-  const r = res.parsed_output;
-  if (!r) throw new ClaudeError('Claude hat keine verwertbare Antwort geliefert.', 'other');
+  const out = res.parsed_output as z.infer<S> | null;
+  if (!out) throw new ClaudeError('Claude hat keine verwertbare Antwort geliefert.', 'other');
+  return out;
+}
+
+async function request(content: Anthropic.Beta.BetaContentBlockParam[], categories: Category[]): Promise<RecipeDraft> {
+  const r = await callClaude(RecipeSchema, SYSTEM, content);
   if (!r.is_recipe) throw new ClaudeError('Auf dem Bild wurde kein Rezept gefunden.', 'not-recipe');
   return toDraft(r, categories);
 }

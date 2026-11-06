@@ -74,6 +74,8 @@ export interface ShoppingItem {
   order: number;
   /** Änderungszeitpunkt für die Synchronisation */
   updatedAt?: number;
+  /** Von Hand gewählte Supermarkt-Abteilung (sonst automatisch) */
+  aisle?: string;
 }
 
 /** Entwurf nach dem OCR, noch nicht gespeichert. */

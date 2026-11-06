@@ -16,9 +16,12 @@ Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, **
 - **Prüfbildschirm**: alle Felder editierbar, Original daneben (Handy: ausklappbar oben). Zutaten auch „als Text“ bearbeitbar.
 - **Buchansicht**: eine Rezeptseite pro Ansicht, Titelseite mit Inhaltsverzeichnis, Blättern per Wischen, Pfeiltasten oder Buttons, mit Seiten-Animation. Beim Kochen Zutaten und Schritte antippen, um sie abzuhaken.
 - **Liste + Detail**: Suche über Titel, Zutaten und Schritte (umlauttolerant: „kurbis“ findet „Kürbis“), Filter nach Kategorie. Am Handy Liste → Detail, am großen Bildschirm nebeneinander.
+- **Kochmodus** („Jetzt kochen“): ein Schritt pro Bildschirm, große Schrift, der Bildschirm bleibt an, die passenden Zutaten mit Mengen stehen direkt beim Schritt. Wischen oder Weiter/Zurück.
+- **Timer aus dem Text**: Zeitangaben wie „20 Minuten köcheln“ werden zu Timer-Knöpfen. Mehrere Timer gleichzeitig, sichtbar auf jeder Seite, mit Ton und Vibration. (Bei gesperrtem iPhone pausiert die App – im Kochmodus bleibt der Bildschirm deshalb an.)
+- **Mit Claude**: „Was koche ich heute?“ (passende Rezepte aus dem eigenen Buch zu dem, was da ist, Fehlendes mit einem Tipp auf die Einkaufsliste), **Zutat ersetzen** (Ersatz mit Menge, direkt ins Rezept übernehmen) und **Rezept anpassen** (vegetarisch, vegan, glutenfrei, kindgerecht, schneller … – als eigene Variante, das Original bleibt).
 - **Inhaltsverzeichnis** nach Kategorien. Kategorien anlegen, umbenennen, sortieren, löschen. Mehrere Kategorien pro Rezept möglich.
 - **Portionen umrechnen** mit +/–. Brüche bei EL, TL und Stück („1½“, „¾“), Dezimalzahlen mit Komma und sinnvoller Rundung bei g und ml („190 g“ statt „187,5 g“), Plural („1 Zehe“ → „2 Zehen“).
-- **Einkaufsliste**: aus einem oder mehreren Rezepten (Rezeptliste → „Auswählen“). Gleiche Zutaten werden zusammengefasst und Einheiten umgerechnet (500 g + 1 kg = 1,5 kg). Abhaken, löschen, leeren, eigene Einträge.
+- **Einkaufsliste**: aus einem oder mehreren Rezepten (Rezeptliste → „Auswählen“). Gleiche Zutaten werden zusammengefasst und Einheiten umgerechnet (500 g + 1 kg = 1,5 kg). **Sortiert nach Supermarkt-Abteilungen** (Obst & Gemüse, Kühlregal, Fleisch & Fisch …), Abteilung pro Eintrag änderbar – die App merkt sich das. Abhaken, löschen, leeren, eigene Einträge.
 - **Foto vom Gericht**: per Kamera oder aus der Mediathek, oder ein **Beispielfoto** aus freien Bilddatenbanken (Openverse) mit automatischem Bildnachweis.
 - **Synchronisation** über ein privates GitHub-Repository: Rezepte, Kategorien, Fotos und die **Einkaufsliste** auf mehreren Handys gleich halten. Einrichtung siehe unten.
 - **Backup**: Export und Import aller Daten inklusive Bilder als eine JSON-Datei, zusammenführen oder ersetzen.
@@ -42,6 +45,7 @@ Weitere Befehle:
 | `npm run build` | Produktions-Build nach `dist/` (mit Service Worker) |
 | `npm run preview` | gebauten Stand lokal ausliefern (auch im WLAN) |
 | `npm test` | Unit-Tests (Mengen, Zutaten-Parser, Rezept-Heuristik, Einkaufsliste, Seiten zusammenfügen, Spaltenerkennung) |
+| `npm run test:features` | Kochmodus, Timer, Abteilungen, „Was koche ich heute?“, Zutat ersetzen, Rezept anpassen (nach `build`) |
 | `npm run test:claude` | Claude-Erkennung mit nachgebildeter Anthropic-API: Anfrage, Übernahme, Fehlerfälle (nach `build`) |
 | `npm run test:sync` | Synchronisationstest mit zwei „Handys“ und nachgebildetem GitHub (nach `build`) |
 | `npm run test:app` | Funktionstest im Browser: Blättern, Portionen, Einkaufsliste, Suche, Backup, Offline (nach `build`) |

@@ -5,6 +5,7 @@ import { navigate } from '../router';
 import { searchRecipes, snippet } from '../lib/search';
 import { Icon } from '../components/Icon';
 import { MoreLink } from '../components/MoreLink';
+import { AdaptSheet, SubstituteSheet } from '../components/AssistSheets';
 import { RecipeArticle } from '../components/RecipeArticle';
 import { confirmDialog, StoredImage, toast } from '../components/ui';
 import { addToShopping, deleteRecipe } from '../db/repo';
@@ -12,6 +13,7 @@ import type { Category, Recipe } from '../types';
 
 function RecipeDetail({ recipe, categories, onBack }: { recipe: Recipe; categories: Category[]; onBack?: () => void }) {
   const [servings, setServings] = useState(recipe.servings ?? 1);
+  const [sheet, setSheet] = useState<'substitute' | 'adapt' | null>(null);
   useEffect(() => setServings(recipe.servings ?? 1), [recipe.id, recipe.servings]);
 
   const remove = async () => {
@@ -55,17 +57,27 @@ function RecipeDetail({ recipe, categories, onBack }: { recipe: Recipe; categori
         servings={servings}
         onServings={setServings}
         actions={
-          <button
-            className="btn btn-primary"
-            onClick={async () => {
-              const n = await addToShopping(recipe, servings);
-              toast(`${n} Zutaten auf die Einkaufsliste gesetzt`);
-            }}
-          >
-            <Icon name="cart" /> Auf die Einkaufsliste
-          </button>
+          <>
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                const n = await addToShopping(recipe, servings);
+                toast(`${n} Zutaten auf die Einkaufsliste gesetzt`);
+              }}
+            >
+              <Icon name="cart" /> Auf die Einkaufsliste
+            </button>
+            <button className="btn" onClick={() => setSheet('substitute')} disabled={!recipe.ingredients.length}>
+              <Icon name="refresh" /> Zutat ersetzen
+            </button>
+            <button className="btn" onClick={() => setSheet('adapt')}>
+              <Icon name="sparkle" /> Rezept anpassen
+            </button>
+          </>
         }
       />
+      {sheet === 'substitute' && <SubstituteSheet recipe={recipe} onClose={() => setSheet(null)} />}
+      {sheet === 'adapt' && <AdaptSheet recipe={recipe} categories={categories} onClose={() => setSheet(null)} />}
     </div>
   );
 }
@@ -124,6 +136,9 @@ export function LibraryView({ recipeId }: { recipeId?: string }) {
           <MoreLink />
         </div>
       </div>
+      <button className="today-link" onClick={() => navigate('/heute')}>
+        <Icon name="sparkle" /> Was koche ich heute?
+      </button>
       <label className="search">
         <Icon name="search" />
         <input

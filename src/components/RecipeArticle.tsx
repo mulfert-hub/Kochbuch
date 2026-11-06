@@ -6,6 +6,8 @@ import { inflectName } from '../lib/units';
 import { Icon } from './Icon';
 import { StoredImage } from './ui';
 import { Lightbox } from './Lightbox';
+import { TimerChips } from './StepText';
+import { navigate } from '../router';
 
 export function ServingsStepper({
   value,
@@ -79,7 +81,7 @@ export function IngredientList({ ingredients, factor }: { ingredients: Ingredien
   );
 }
 
-export function StepList({ steps }: { steps: string[] }) {
+export function StepList({ steps, title, recipeId }: { steps: string[]; title?: string; recipeId?: string }) {
   const [done, setDone] = useState<number | null>(null);
   return (
     <ol className="steps">
@@ -88,7 +90,10 @@ export function StepList({ steps }: { steps: string[] }) {
           <span className="step-no" aria-hidden="true">
             {i + 1}
           </span>
-          <p>{s}</p>
+          <div>
+            <p>{s}</p>
+            <TimerChips text={s} label={`${title ?? 'Rezept'} – Schritt ${i + 1}`} recipeId={recipeId} />
+          </div>
         </li>
       ))}
     </ol>
@@ -161,6 +166,11 @@ export function RecipeArticle({
               <Icon name="clock" /> {time}
             </span>
           )}
+          {recipe.steps.length > 0 && (
+            <button className="btn btn-primary cook-start" onClick={() => navigate(`/kochen/${recipe.id}?p=${servings}`)}>
+              <Icon name="flame" /> Jetzt kochen
+            </button>
+          )}
         </div>
       </header>
 
@@ -175,7 +185,7 @@ export function RecipeArticle({
         </section>
         <section className="recipe-col recipe-steps">
           <h2 className="recipe-section-title">Zubereitung</h2>
-          {recipe.steps.length ? <StepList steps={recipe.steps} /> : <p className="muted">Keine Schritte erfasst.</p>}
+          {recipe.steps.length ? <StepList steps={recipe.steps} title={recipe.title} recipeId={recipe.id} /> : <p className="muted">Keine Schritte erfasst.</p>}
           {recipe.notes && (
             <aside className="recipe-notes">
               <strong>Notiz</strong>

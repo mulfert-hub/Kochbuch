@@ -21,7 +21,7 @@ export const UNITS: UnitDef[] = [
   { key: 'ml', singular: 'ml', plural: 'ml', aliases: ['ml', 'milliliter'], metric: true, base: { unit: 'ml', factor: 1 } },
   { key: 'cl', singular: 'cl', plural: 'cl', aliases: ['cl', 'zentiliter'], metric: true, base: { unit: 'ml', factor: 10 } },
   { key: 'dl', singular: 'dl', plural: 'dl', aliases: ['dl', 'deziliter'], metric: true, base: { unit: 'ml', factor: 100 } },
-  { key: 'l', singular: 'l', plural: 'l', aliases: ['l', 'liter', 'ltr'], metric: true, base: { unit: 'ml', factor: 1000 } },
+  { key: 'l', singular: 'Liter', plural: 'Liter', aliases: ['l', 'liter', 'ltr'], metric: true, base: { unit: 'ml', factor: 1000 } },
   { key: 'EL', singular: 'EL', plural: 'EL', aliases: ['el', 'eßl', 'essl', 'esslöffel', 'eßlöffel', 'essloeffel'] },
   { key: 'TL', singular: 'TL', plural: 'TL', aliases: ['tl', 'teel', 'teelöffel', 'teeloeffel'] },
   { key: 'Msp.', singular: 'Msp.', plural: 'Msp.', aliases: ['msp', 'messerspitze', 'messerspitzen'] },

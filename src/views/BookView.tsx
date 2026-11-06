@@ -34,6 +34,9 @@ function Cover({ recipes, categories, onOpen }: { recipes: Recipe[]; categories:
           <br />
           Kochbuch
         </h1>
+        <button className="today-link" onClick={() => navigate('/heute')}>
+          <Icon name="sparkle" /> Was koche ich heute?
+        </button>
         <p className="cover-sub">Wische zum Blättern – oder nutze die Pfeiltasten.</p>
       </div>
       <nav className="cover-toc" aria-label="Inhalt">
