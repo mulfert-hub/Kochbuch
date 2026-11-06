@@ -69,8 +69,11 @@ export function CookView({ id, servings }: { id: string; servings: number | null
   };
   const say = (text: string) => {
     voice.pause();
-    speak(text, () => voice.resume());
+    // kurz warten, bis das iPhone vom Mikrofon auf den Lautsprecher umgeschaltet hat
+    window.setTimeout(() => speak(text, () => voice.resume()), 350);
   };
+  const [voiceStarting, setVoiceStarting] = useState(false);
+  const startingRef = useRef(false);
   const voice = useContinuousListening(
     voiceOn,
     (text) => {
@@ -153,31 +156,40 @@ export function CookView({ id, servings }: { id: string; servings: number | null
         </span>
         {speechSupported() && (
           <button
-            className={`icon-btn cook-mic${voiceOn ? ' is-on' : ''}`}
+            className={`icon-btn cook-mic${voiceOn || voiceStarting ? ' is-on' : ''}`}
             onClick={() => {
               setVoiceError(null);
               setHeard(null);
-              if (voiceOn) {
+              if (voiceOn || voiceStarting) {
                 setVoiceOn(false);
+                setVoiceStarting(false);
+                startingRef.current = false;
                 stopSpeaking();
               } else {
-                setVoiceOn(true);
-                speak(pageText(page));
+                // Erst vorlesen (durch Antippen erlaubt das iPhone das Vorlesen), danach das Mikrofon einschalten
+                setVoiceStarting(true);
+                startingRef.current = true;
+                speak(pageText(page), () => {
+                  if (!startingRef.current) return;
+                  startingRef.current = false;
+                  setVoiceStarting(false);
+                  setVoiceOn(true);
+                });
               }
             }}
-            aria-pressed={voiceOn}
-            aria-label={voiceOn ? 'Sprachsteuerung aus' : 'Sprachsteuerung an'}
+            aria-pressed={voiceOn || voiceStarting}
+            aria-label={voiceOn || voiceStarting ? 'Sprachsteuerung aus' : 'Sprachsteuerung an'}
           >
             <Icon name="mic" />
           </button>
         )}
       </header>
-      {(voiceOn || voiceError) && (
+      {(voiceOn || voiceStarting || voiceError) && (
         <div className={`cook-voice${voiceError ? ' is-error' : ''}`} role="status">
           {voiceError ?? (
             <>
-              <strong>{voice.listening ? 'Ich höre zu.' : 'Mikrofon startet …'}</strong>
-              <span>Sag „weiter“, „zurück“, „vorlesen“, „Timer 10 Minuten“ oder „Stopp“.</span>
+              <strong>{voiceStarting ? 'Ich lese vor …' : voice.listening ? 'Ich höre zu.' : 'Mikrofon startet …'}</strong>
+              <span>Sag „weiter“, „zurück“, „vorlesen“, „Timer 10 Minuten“, „Timer stellen“ oder „Stopp“.</span>
               {heard && <span className="cook-heard">{heard}</span>}
             </>
           )}

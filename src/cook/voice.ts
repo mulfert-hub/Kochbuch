@@ -125,19 +125,32 @@ export function listenOnce(): Promise<string> {
   });
 }
 
-/** Text vorlesen (deutsche Stimme) – ruft onEnd auf, wenn fertig */
+/** Text vorlesen (deutsche Stimme) – ruft onEnd genau einmal auf, wenn fertig.
+ *  iPhone: Vorlesen klappt nur, wenn das erste Vorlesen durch Antippen ausgelöst wurde, und nicht während das
+ *  Mikrofon aufnimmt. Deshalb pausiert der Kochmodus das Zuhören vorher. Falls Safari das Ende nicht meldet,
+ *  geht es nach einer geschätzten Dauer trotzdem weiter. */
 export function speak(text: string, onEnd?: () => void) {
   const synth = window.speechSynthesis;
-  if (!synth) return onEnd?.();
-  synth.cancel();
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    window.clearTimeout(safety);
+    onEnd?.();
+  };
+  const safety = window.setTimeout(finish, Math.max(3000, text.length * 95));
+  if (!synth) return finish();
+  // cancel() direkt vor speak() verschluckt auf dem iPhone manchmal den neuen Text
+  if (synth.speaking || synth.pending) synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'de-DE';
   const voice = synth.getVoices().find((v) => v.lang.startsWith('de'));
   if (voice) u.voice = voice;
   u.rate = 1;
-  u.onend = () => onEnd?.();
-  u.onerror = () => onEnd?.();
+  u.onend = finish;
+  u.onerror = finish;
   synth.speak(u);
+  if (synth.paused) synth.resume();
 }
 
 export function stopSpeaking() {

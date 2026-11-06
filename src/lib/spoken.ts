@@ -29,18 +29,22 @@ export type CookCommand =
 /** Befehl aus einem gesprochenen Satz – null, wenn nichts erkannt wurde */
 export function parseCookCommand(text: string): CookCommand | null {
   const t = ` ${fold(text).replace(/[^a-z0-9ß,. ]/g, ' ').replace(/\s+/g, ' ').trim()} `;
-  // Timer mit Dauer: „Timer zehn Minuten“, „stell einen Timer auf eine halbe Stunde“, „Timer 90 Sekunden“
-  const m = t.match(/(?:timer|wecker|erinner)\D*?(?:auf |fur |von )?(eine halbe|[a-z0-9,.]+(?: und [a-z0-9]+)?)\s+(stunden?|minuten?|min|sekunden?)\b/);
-  if (m) {
-    const words = m[1].split(' ');
-    let n = words[0] === 'eine' && words[1] === 'halbe' ? 0.5 : spokenNumber(words[0]);
-    if (n == null) n = spokenNumber(m[1].replace(/ /g, ''));
+  // Timer mit Dauer – egal in welcher Reihenfolge: „Timer zehn Minuten“, „stell einen Timer auf eine halbe Stunde“,
+  // „10-Minuten-Timer“, „Wecker in 5 Minuten“, oder nur „zehn Minuten“
+  const d = t.match(/ (eine halbe|ne halbe|halbe|[a-z0-9,.]+(?: und (?:eine )?halb| und [a-z0-9]+)?) (stunden?|std|minuten?|min|sekunden?|sek)\b/);
+  const timerWord = /(timer|teimer|taimer|wecker|erinner|stell|klingel| uhr )/.test(t);
+  if (d && (timerWord || t.trim().split(' ').length <= 3)) {
+    const words = d[1].split(' ');
+    let n = /halbe$/.test(d[1]) && words.length <= 2 ? 0.5 : spokenNumber(words[0]);
+    if (n != null && / halb$/.test(d[1])) n += 0.5;
+    else if (n != null && words.length === 3 && words[1] === 'und') n = spokenNumber(d[1].replace(/ /g, '')) ?? n;
+    if (n == null) n = spokenNumber(d[1].replace(/ /g, ''));
     if (n != null && n > 0) {
-      const unit = m[2].startsWith('stunde') ? 3600 : m[2].startsWith('sek') ? 1 : 60;
+      const unit = d[2].startsWith('st') ? 3600 : d[2].startsWith('sek') ? 1 : 60;
       return { type: 'timer', seconds: Math.round(n * unit) };
     }
   }
-  if (/ (timer|wecker) (starten|start|an)\b| start(e)? (den |einen )?timer/.test(t)) return { type: 'stepTimer' };
+  if (/ (timer|teimer|taimer|wecker) (starten|start|an|stellen|setzen)\b| (start(e)?|stell(e)?|setz(e)?) (den |einen |ein |mal )?(timer|teimer|taimer|wecker)|^ (timer|teimer|taimer|wecker) $/.test(t)) return { type: 'stepTimer' };
   if (/ (stopp?|alarm aus|ruhe|aus) $|alarm (aus|stopp?|beenden)|timer (aus|stopp?|beenden)/.test(t)) return { type: 'stopAlarm' };
   if (/ (zuhoren beenden|mikrofon aus|nicht mehr zuhoren|horen aufhoren) /.test(t)) return { type: 'stopListening' };
   if (/ (vorlesen|lies|nochmal|noch mal|wiederholen|was jetzt|was muss ich) /.test(t)) return { type: 'read' };

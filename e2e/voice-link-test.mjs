@@ -59,7 +59,7 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
 const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
-const say = async (t) => { await p.evaluate((x) => window.__say(x), t); await p.waitForTimeout(250); };
+const say = async (t) => { await p.evaluate((x) => window.__say(x), t); await p.waitForTimeout(600); };
 
 // ---------- Kochmodus mit Sprache ----------
 await p.goto(`${BASE}#/rezepte`);
