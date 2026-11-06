@@ -1,5 +1,6 @@
 // Heuristik: OCR-Text (Zeilen mit Höhe/Absatz-Info) → Rezeptentwurf.
 import type { Ingredient, RecipeDraft } from '../types';
+import { lookupUnit } from './units';
 import { isPureQuantity, normalizeOcrLine, parseIngredientLine, reorderColumns, startsWithQuantity } from './ingredientParser';
 
 export interface OcrLine {
@@ -62,10 +63,16 @@ function letterRatio(s: string): number {
 /** Entfernt Statusleiste, UI-Buttons und Zeichensalat. */
 export function cleanLines(lines: OcrLine[]): OcrLine[] {
   const out: OcrLine[] = [];
-  for (const l of lines) {
+  for (const [idx, l] of lines.entries()) {
+    // Statusleiste (Uhrzeit) in den ersten Zeilen, auch wenn OCR Symbole dahinter liest
+    if (idx < 3 && /^\d{1,2}[:.]\d{2}(?:\s|$)/.test(l.text.trim())) continue;
+    // Eingabezeilen von Chat-Apps („ChatGPT fragen“, „Nachricht schreiben“)
+    if (/^\W*\S+\s+fragen\b|nachricht (?:schreiben|senden)|^\W*message\b/i.test(l.text.trim())) continue;
     // Große Lücken (≥3 Leerzeichen) bleiben als Spaltentrenner erhalten
     const text = l.text
       .replace(/^\s*[|¦]\s+/, '')
+      // einzelne Symbol-Reste von Emojis („&“, „@“, „©“) entfernen
+      .replace(/(^|\s)[&@©®]+(?=\s|$)/g, '$1')
       .replace(/[\t\u00A0]/g, ' ')
       .replace(/ {3,}/g, '\u0000')
       .replace(/ +/g, ' ')
@@ -78,6 +85,9 @@ export function cleanLines(lines: OcrLine[]): OcrLine[] {
     if (/^(?:alle\s+)?\d+\s+(?:kommentare|antworten|likes?|gefällt)/i.test(text)) continue;
     if (UI_NOISE.test(text.replace(/[^\p{L}\s:'-]/gu, '').trim())) continue;
     if (text.length < 25 && STATUS_BAR.test(text) && !startsWithIngredientish(text)) continue;
+    // Zeichensalat aus Icon-Leisten („OO» OO N 6 0“): mehrere Fetzen, aber kein echtes Wort
+    const tokens = text.split(/\s+/);
+    if (tokens.length >= 3 && !startsWithQuantity(text) && !tokens.some((t) => /\p{L}{3,}/u.test(t))) continue;
     const ratio = letterRatio(text);
     // Zeilen ohne Buchstaben (außer reinen Mengen/Nummern) sind meist Icons oder Rauschen.
     if (ratio < 0.3 && !isPureQuantity(text) && !/^\d+[.)]?$/.test(text)) continue;
@@ -294,6 +304,18 @@ function parseIngredients(lines: OcrLine[]): Ingredient[] {
   return out.filter((i) => i.name.length > 1);
 }
 
+/** „1. Hirse mit Wasser …“ – nummerierter Schritt (keine Zutat wie „1 Ei“) */
+const NUMBERED_STEP = /^(?:schritt\s*)?\d{1,2}[.)]\s+\p{Lu}/iu;
+function isNumberedStep(t: string): boolean {
+  if (!NUMBERED_STEP.test(t.trim())) return false;
+  const word = t.trim().replace(/^(?:schritt\s*)?\d{1,2}[.)]\s+/i, '').split(/\s/)[0] ?? '';
+  return !lookupUnit(word);
+}
+
+/** „So bereitest du den Hirse-Apfel-Brei zu:“, „Rezept für Pfannkuchen:“ → Titel */
+const TITLE_PHRASE =
+  /(?:so (?:bereitest|machst|kochst|backst|zauberst) (?:du|ihr) (?:den|die|das|deinen|deine|dein|euren|eure|euer)|(?:hier ist )?(?:ein |mein |das )?rezept für (?:den |die |das |einen |eine |ein )?|zutaten für (?:den|die|das))\s+(.+?)(?:\s+zu)?\s*[:.!]?\s*$/i;
+
 /** Hauptfunktion: aus OCR-Zeilen einen Rezeptentwurf erstellen. */
 export function parseRecipe(rawLines: OcrLine[]): RecipeDraft {
   const ocrText = rawLines.map((l) => l.text).join('\n');
@@ -304,7 +326,8 @@ export function parseRecipe(rawLines: OcrLine[]): RecipeDraft {
   const isMeta = (t: string) => /\b(?:min\.?|minuten|std\.?|portionen|personen|kcal)\b/i.test(t);
 
   // Beginn der Zutaten: nach „Zutaten“-Überschrift, sonst erste Zeile mit Mengenangabe
-  let ingFrom = ingHeader !== -1 ? ingHeader + 1 : lines.findIndex((l) => startsWithQuantity(l.text) && !isMeta(l.text));
+  let ingFrom =
+    ingHeader !== -1 ? ingHeader + 1 : lines.findIndex((l) => startsWithQuantity(l.text) && !isMeta(l.text) && !isNumberedStep(l.text));
   let ingTo: number;
   let stepFrom: number;
   if (stepHeader !== -1) {
@@ -316,7 +339,7 @@ export function parseRecipe(rawLines: OcrLine[]): RecipeDraft {
     let i = ingFrom;
     // Ein Satz (≥4 Wörter oder Satzzeichen am Ende, ohne Menge vorne) beginnt die Zubereitung
     const isSentence = (t: string) => !startsWithQuantity(reorderColumns(t)) && !/^[(a-zäöü]/.test(t) && (t.split(/\s+/).length >= 4 || /[.!?]$/.test(t));
-    while (i < lines.length && !isSentence(lines[i].text) && lines[i].text.length < 60) i++;
+    while (i < lines.length && !isSentence(lines[i].text) && !isNumberedStep(lines[i].text) && lines[i].text.length < 60) i++;
     ingTo = i;
     stepFrom = i;
   } else {
@@ -325,7 +348,16 @@ export function parseRecipe(rawLines: OcrLine[]): RecipeDraft {
   }
 
   const headerEnd = ingHeader !== -1 ? ingHeader : ingFrom !== -1 ? ingFrom : Math.min(lines.length, 6);
-  const { title, used } = findTitle(lines, Math.max(headerEnd, 1) + 1);
+  let { title, used } = findTitle(lines, Math.max(headerEnd, 1) + 1);
+  // Titel aus einer Einleitung wie „So bereitest du den Hirse-Apfel-Brei zu:“ (Chat-Antworten, Blogs)
+  for (let i = Math.min(headerEnd, lines.length - 1); i >= 0 && i >= headerEnd - 4; i--) {
+    const m = lines[i]?.text.match(TITLE_PHRASE);
+    if (m && m[1].length >= 3 && m[1].length <= 60) {
+      title = m[1].replace(/\s+/g, ' ').trim();
+      used = new Set([i]);
+      break;
+    }
+  }
   const { servings, label } = parseServings(lines);
   const timeMinutes = parseTime(lines.slice(0, Math.max(headerEnd + 2, 8)));
   if (stepFrom === -1) stepFrom = Math.max(...used, -1) + 1;

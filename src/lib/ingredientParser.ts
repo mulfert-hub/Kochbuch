@@ -10,6 +10,8 @@ export function normalizeOcrLine(line: string): string {
     .replace(/[   ]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  // „%“, „Vz“, „Y%“ … werden häufig für „½“ gelesen (auch hinter einem Aufzählungspunkt)
+  s = s.replace(/^((?:[•●*°oe]\s+)?)(?:%|Vz|Y2|V2|Y%|V%|Ye)(?=\s)/, '$1½');
   // Aufzählungszeichen am Anfang entfernen
   s = s.replace(/^(?:[•●○◦▪▫■□·*»>✓✔☐☑°º«-]|[oe]\s(?=[\d½¼¾⅓⅔]))\s*/u, '');
   // „l EL“, „I TL“ → „1 EL“ (kleines L / großes I statt Eins vor einer Einheit)
@@ -21,6 +23,8 @@ export function normalizeOcrLine(line: string): string {
   s = s.replace(/^(?:%|Vz|Y2|V2)(?=\s)/, '½');
   // „1%“ → „1½“, wenn eine Einheit folgt
   s = s.replace(/^(\d+)%(?=\s)/, '$1½');
+  // „309g“: das „g“ wurde doppelt gelesen (als 9 und g) → „30 g“
+  s = s.replace(/^(\d{2,})9g(?=\s|$)/, '$1 g');
   // O statt 0 in Zahlen: „2O0 g“ → „200 g“
   s = s.replace(/^(\d+)[oO](\d*)/, (_m, a, b) => `${a}0${b}`);
   // „200g“ → „200 g“, „1EL“ → „1 EL“

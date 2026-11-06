@@ -46,6 +46,7 @@ const parseQ = (s) => {
 const browser = await chromium.launch();
 const report = [];
 for (const [name, gt] of Object.entries(truth)) {
+  if (process.env.ONLY && !process.env.ONLY.split(',').includes(name)) continue;
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(`http://localhost:${PORT}${BASE}#/import`);

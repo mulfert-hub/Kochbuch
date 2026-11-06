@@ -16,6 +16,7 @@ Die Testbilder liegen in `e2e/fixtures/`, die erwarteten Werte in `e2e/ground-tr
 | `app-hell-1…3.png` | Rezept-App, hell, Zutaten als Tabelle (Menge links), „Schritt 1…4“, halbtransparente Tab-Leiste überdeckt Text, **3 überlappende Screenshots** | Entwicklungsbild |
 | `blog-dunkel-1…2.png` | Blog im **Dark Mode**, Serifenschrift, Aufzählungspunkte, Schritte als Absätze ohne Nummern, Tipp-Kasten, **2 Screenshots mit großer Überlappung** | Entwicklungsbild |
 | `social-post.jpg` | Instagram-artiger Post: kleine Schrift, Emojis, JPEG-Kompression (Qualität 55), **Menge rechts** („Mozzarella … 1 Kugel“), Hashtags | Kontrollbild |
+| `echt-chatgpt.jpg` | **Echter Screenshot** vom iPhone: ChatGPT-Antwort mit Rezept, Aufzählungspunkte, nummerierte Schritte **ohne** „Zubereitung“-Überschrift, Emojis, Eingabeleiste | Echtes Bild (Nutzer-Feedback) |
 | `kochbuch-foto.jpg` | Simuliertes **Handyfoto einer Buchseite**: schräg (-2°), leicht unscharf, ungleichmäßig beleuchtet, **zweispaltig** (Zutaten links, Text rechts, Blocksatz mit Silbentrennung) | Kontrollbild |
 
 Alle Bilder haben iPhone-Auflösung (1179 × 2556 px). Echte Fotos von Papier konnte ich hier nicht machen. Das „Kochbuch-Foto“ ist deshalb nur eine Annäherung.
@@ -26,7 +27,8 @@ Alle Bilder haben iPhone-Auflösung (1179 × 2556 px). Echte Fotos von Papier ko
 |---|---|---|---|---|---|
 | App, 3 Screenshots | ✓ | ✓ | ✓ | **13 / 13** | 4 / 4, 100 % Text |
 | Blog Dark Mode, 2 Screenshots | ✓ | ✓ | ✓ | **10 / 10** | 4 / 4, 100 % Text, Tipp → Notiz ✓ |
-| Social-Media-Post | ✗ | ✓ | – | **5 / 6** | 4 / 4 (letzter mit „Guten Appetit! &“) |
+| Social-Media-Post | ✗ | ✓ | – | **6 / 6** | 4 / 4 (letzter mit „Guten Appetit!“) |
+| Echter ChatGPT-Screenshot | ✓ | – | – | **4 / 4** | 4 / 4, Tipp → Notiz ✓ |
 | Buchseite (Foto) | ✓ | ✓ | ✓ | **7 / 11** | 3 / 4 (zwei Absätze verschmolzen) |
 
 ¹ Menge, Einheit und Name stimmen alle.
@@ -39,6 +41,17 @@ Dauer im Desktop-Browser: 2,5 bis 5 s pro Rezept. Auf dem Handy rechne ich mit d
   - Social-Post: 2 von 6 Zutaten richtig, Schritte nur zu ~25 % richtig.
   - Buchseite: 0 von 11 Zutaten richtig, 0 Schritte, weil beide Spalten quer gelesen wurden.
 - Danach habe ich **eine Runde allgemeine Verbesserungen** eingebaut: Spaltenerkennung über Wortpositionen, das „Zutat … Menge“-Layout und die Entfernung von OCR-Resten vor Überschriften. Damit sind auch die Kontrollbilder nicht mehr ganz unabhängig. Für eine wirklich neutrale Einschätzung braucht es deine echten Screenshots.
+
+### Echter Screenshot (ChatGPT-Antwort)
+
+Erster Durchlauf mit dem echten Bild: falscher Titel („Ja, natürlich! …“), Zutaten verklebt („309 g Hirse e Y% kleiner Apfel“), alle Schritte bei den Zutaten statt bei der Zubereitung. Danach behoben, allgemein und nicht nur für dieses Bild:
+
+- Nummerierte Schritte („1. Hirse …“) beenden die Zutatenliste, auch ohne Überschrift „Zubereitung“.
+- Titel aus Einleitungssätzen wie „So bereitest du den … zu:“ oder „Rezept für …“.
+- OCR-Fehler: „Y%“ → ½, Aufzählungspunkt als „e“ vor einem Bruch, „309g“ (doppelt gelesenes g) → „30 g“.
+- Emoji-Reste („&“), Icon-Leisten und Chat-Eingabezeilen („ChatGPT fragen“) werden entfernt.
+
+Der Rohtext ist als Unit-Test hinterlegt (`tests/real-chatgpt.test.ts`).
 
 ## Was gut funktioniert
 
