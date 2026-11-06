@@ -6,6 +6,7 @@ import { downloadBackup, restoreBackup } from '../db/backup';
 import { seedSampleRecipes } from '../db/seed';
 import { Icon } from '../components/Icon';
 import { getTheme, setTheme, type ThemeChoice } from '../theme';
+import { APP_BUILD_TIME, APP_VERSION, checkForUpdate } from '../update';
 import { choiceDialog, confirmDialog, toast } from '../components/ui';
 
 function fmtBytes(n: number) {
@@ -202,6 +203,29 @@ export function MoreView() {
             }}
           >
             <Icon name="trash" /> Alle Rezepte löschen
+          </button>
+        </div>
+      </section>
+
+      <section className="more-card card">
+        <h2>App-Version</h2>
+        <p>
+          Version <strong>{APP_VERSION}</strong> vom{' '}
+          {new Date(APP_BUILD_TIME).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })}. Die App aktualisiert sich normalerweise von
+          selbst.
+        </p>
+        <div className="more-actions">
+          <button
+            className="btn"
+            disabled={busy === 'update'}
+            onClick={async () => {
+              setBusy('update');
+              const r = await checkForUpdate();
+              setBusy(null);
+              toast(r === 'updated' ? 'Neue Version gefunden – die App startet gleich neu …' : r === 'offline' ? 'Keine Verbindung – bitte später erneut versuchen' : 'Du hast die neueste Version');
+            }}
+          >
+            <Icon name="refresh" /> {busy === 'update' ? 'Suche …' : 'Nach Update suchen'}
           </button>
         </div>
       </section>

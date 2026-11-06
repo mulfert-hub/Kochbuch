@@ -9,13 +9,12 @@ import './styles/views.css';
 import { App } from './App';
 import { firstRunSetup } from './db/seed';
 import { applyTheme } from './theme';
+import { initUpdates } from './update';
 
 applyTheme();
 
-// Service Worker registrieren (offline + Updates automatisch)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }));
-}
+// Service Worker registrieren (offline + automatische Updates)
+initUpdates().catch(() => {});
 
 // Als installierte App: Speicher als dauerhaft anfragen, damit der Browser ihn nicht räumt
 if (window.matchMedia('(display-mode: standalone)').matches) {

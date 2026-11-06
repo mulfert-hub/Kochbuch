@@ -5,8 +5,16 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Für GitHub Pages wird BASE_PATH=/<repo-name>/ gesetzt, lokal ist es "/".
 const base = process.env.BASE_PATH ?? '/';
 
+// Versionskennung: Commit (in GitHub Actions) bzw. „lokal“, dazu Bauzeitpunkt
+const version = (process.env.GITHUB_SHA ?? 'lokal').slice(0, 7);
+const buildTime = new Date().toISOString();
+
 export default defineConfig({
   base,
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __APP_BUILD_TIME__: JSON.stringify(buildTime),
+  },
   plugins: [
     react(),
     VitePWA({
