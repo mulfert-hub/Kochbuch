@@ -159,6 +159,15 @@ export function RecipeArticle({
       <header className="recipe-head">
         <div className="eyebrow">{cats.length ? cats.map((c) => c.name).join(' · ') : 'Rezept'}</div>
         <h1 className="recipe-title">{recipe.title}</h1>
+        {(recipe.tags ?? []).length > 0 && (
+          <div className="recipe-tags">
+            {recipe.tags!.map((t) => (
+              <button key={t} className="tag-pill" onClick={() => navigate(`/rezepte?tag=${encodeURIComponent(t)}`)}>
+                #{t}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="recipe-meta">
           <ServingsStepper value={servings} base={base} label={recipe.servingsLabel} onChange={onServings} />
           {time && (

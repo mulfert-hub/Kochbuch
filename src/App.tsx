@@ -72,7 +72,7 @@ export function App() {
       view = <BookView recipeId={id} />;
       break;
     case 'rezepte':
-      view = sub === 'bearbeiten' && id ? <EditView id={id} /> : <LibraryView recipeId={id} />;
+      view = sub === 'bearbeiten' && id ? <EditView id={id} /> : <LibraryView recipeId={id} tagParam={query.get('tag')} />;
       break;
     case 'inhalt':
       view = <TocView />;

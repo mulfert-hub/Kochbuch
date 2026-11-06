@@ -25,6 +25,8 @@ export interface Recipe {
   /** Bezeichnung der Portionen, z. B. „Portionen“, „Stück“, „Personen“. */
   servingsLabel?: string;
   categoryIds: string[];
+  /** Freie Tags wie „Thea“, „Familie“, „Fleisch“ */
+  tags?: string[];
   ingredients: Ingredient[];
   steps: string[];
   notes?: string;
@@ -88,12 +90,14 @@ export interface RecipeDraft {
   notes?: string;
   timeMinutes?: number | null;
   categoryIds: string[];
+  /** Freie Tags wie „Thea“, „Familie“, „Fleisch“ */
+  tags?: string[];
   ocrText: string;
   /** Foto vom Gericht: Blob = neu/geändert, null = entfernen, undefined = unverändert */
   photo?: Blob | null;
   photoCredit?: PhotoCredit | null;
   /** Wer das Rezept erkannt hat */
-  source?: 'claude';
+  source?: 'claude' | 'idea';
   /** Wie sicher die Heuristik ist (0–1) – nur zur Anzeige. */
   confidence?: number;
 }

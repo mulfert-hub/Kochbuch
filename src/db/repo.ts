@@ -48,6 +48,7 @@ export async function createRecipe(draft: RecipeDraft, images: Blob[] = []): Pro
       servings: draft.servings,
       servingsLabel: draft.servingsLabel,
       categoryIds: draft.categoryIds,
+      tags: cleanTags(draft.tags),
       ingredients: cleanIngredients(draft.ingredients),
       steps: draft.steps.map((s) => s.trim()).filter(Boolean),
       notes: draft.notes?.trim() || undefined,
@@ -67,8 +68,23 @@ function cleanIngredients(list: Ingredient[]): Ingredient[] {
   return list.filter((i) => i.name.trim()).map((i) => ({ ...i, name: i.name.trim(), note: i.note?.trim() || undefined }));
 }
 
+/** Tags säubern: getrimmt, ohne Doppelte (Groß/Klein egal) */
+export function cleanTags(tags: string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of tags ?? []) {
+    const v = t.trim().replace(/^#/, '');
+    if (v && !seen.has(v.toLowerCase())) {
+      seen.add(v.toLowerCase());
+      out.push(v);
+    }
+  }
+  return out;
+}
+
 export async function updateRecipe(id: string, patch: Partial<Recipe>): Promise<void> {
   const clean = { ...patch };
+  if (clean.tags) clean.tags = cleanTags(clean.tags);
   if (clean.ingredients) clean.ingredients = cleanIngredients(clean.ingredients);
   if (clean.steps) clean.steps = clean.steps.map((s) => s.trim()).filter(Boolean);
   await db.recipes.update(id, { ...clean, updatedAt: Date.now() });

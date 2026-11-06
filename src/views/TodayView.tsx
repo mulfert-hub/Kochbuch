@@ -1,35 +1,67 @@
-// „Was koche ich heute?“ – Claude sucht passende Rezepte aus eurem Buch zu dem, was da ist.
-import { useState } from 'react';
-import { useRecipes } from '../hooks';
+// „Was koche ich heute?“ – immer 3 Vorschläge: zuerst aus dem eigenen Buch, sonst neue Ideen von Claude.
+import { useMemo, useState } from 'react';
+import { useCategories, useRecipes } from '../hooks';
 import { navigate } from '../router';
-import { whatToCook, type TodaySuggestion } from '../ai/claudeAssist';
+import { ideaToRecipe, whatToCook, type BookSuggestion, type RecipeIdea } from '../ai/claudeAssist';
 import { ClaudeError, claudeConfigured } from '../ai/claudeRecipe';
 import { addManualShopping } from '../db/repo';
+import { allTags } from '../lib/search';
+import { startManual } from '../ocr/importStore';
 import { Icon } from '../components/Icon';
 import { StoredImage, toast } from '../components/ui';
 import { MoreLink } from '../components/MoreLink';
 
-const WISHES = ['schnell', 'vegetarisch', 'für Kinder', 'leicht', 'Resteverwertung', 'etwas Süßes'];
+const WISHES = ['schnell', 'vegetarisch', 'leicht', 'Resteverwertung', 'etwas Süßes'];
+
+function errorText(e: unknown) {
+  return e instanceof ClaudeError ? e.message : 'Das hat leider nicht geklappt. Bitte erneut versuchen.';
+}
 
 export function TodayView() {
   const recipes = useRecipes();
+  const categories = useCategories();
+  const tags = useMemo(() => allTags(recipes ?? []), [recipes]);
   const [have, setHave] = useState('');
   const [wishes, setWishes] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ suggestions: TodaySuggestion[]; note: string | null } | null>(null);
+  const [result, setResult] = useState<{ fromBook: BookSuggestion[]; ideas: RecipeIdea[] } | null>(null);
+
+  // Tags wie „Thea“ als Wunsch: „für Thea geeignet (#Thea)“
+  const wishText = wishes.map((w) => (tags.includes(w) ? `passend zu #${w}` : w));
 
   const ask = async () => {
-    if (!recipes?.length) return;
     setBusy(true);
     setError(null);
     try {
-      setResult(await whatToCook(have, wishes, recipes));
+      setResult(await whatToCook(have, wishText, recipes ?? []));
     } catch (e) {
-      setError(e instanceof ClaudeError ? e.message : 'Das hat leider nicht geklappt. Bitte erneut versuchen.');
+      setError(errorText(e));
     } finally {
       setBusy(false);
     }
+  };
+
+  const workOut = async (idea: RecipeIdea) => {
+    setWorking(idea.title);
+    setError(null);
+    try {
+      const draft = await ideaToRecipe(idea, have, wishText, categories ?? []);
+      // Gewählte Tags übernehmen („Thea“), damit das neue Rezept gleich richtig einsortiert ist
+      draft.tags = wishes.filter((w) => tags.includes(w));
+      startManual(draft);
+      navigate('/import/pruefen');
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  const shopMissing = async (missing: string[]) => {
+    for (const m of missing) await addManualShopping(m);
+    toast(`${missing.length} Zutaten auf die Einkaufsliste gesetzt`);
   };
 
   return (
@@ -62,22 +94,22 @@ export function TodayView() {
         />
       </label>
       <div className="chip-wrap today-wishes">
-        {WISHES.map((w) => (
-          <button key={w} className="chip" aria-pressed={wishes.includes(w)} onClick={() => setWishes(wishes.includes(w) ? wishes.filter((x) => x !== w) : [...wishes, w])}>
-            {w}
+        {[...tags.map((t) => ({ v: t, label: `#${t}` })), ...WISHES.map((w) => ({ v: w, label: w }))].map(({ v, label }) => (
+          <button key={v} className={`chip${tags.includes(v) ? ' tag-chip' : ''}`} aria-pressed={wishes.includes(v)} onClick={() => setWishes(wishes.includes(v) ? wishes.filter((x) => x !== v) : [...wishes, v])}>
+            {label}
           </button>
         ))}
       </div>
-      <button className="btn btn-primary btn-block btn-lg" onClick={ask} disabled={busy || !recipes?.length}>
-        <Icon name="sparkle" /> {busy ? 'Claude blättert im Kochbuch …' : 'Vorschläge holen'}
+      <button className="btn btn-primary btn-block btn-lg" onClick={ask} disabled={busy}>
+        <Icon name="sparkle" /> {busy ? 'Claude blättert im Kochbuch …' : '3 Vorschläge holen'}
       </button>
       {error && <p className="error">{error}</p>}
 
       {result && (
         <div className="today-results">
-          {result.note && <p className="sync-state">{result.note}</p>}
-          {result.suggestions.map((s) => (
+          {result.fromBook.map((s) => (
             <article key={s.recipe.id} className="today-card card">
+              <span className="today-badge">Aus eurem Buch</span>
               <button className="today-card-main" onClick={() => navigate(`/rezepte/${s.recipe.id}`)}>
                 {(s.recipe.photoId || s.recipe.imageIds[0]) && <StoredImage id={(s.recipe.photoId || s.recipe.imageIds[0])!} alt="" className="today-img" />}
                 <span>
@@ -92,19 +124,39 @@ export function TodayView() {
                   <Icon name="flame" /> Kochen
                 </button>
                 {s.missing.length > 0 && (
-                  <button
-                    className="btn"
-                    onClick={async () => {
-                      for (const m of s.missing) await addManualShopping(m);
-                      toast(`${s.missing.length} Zutaten auf die Einkaufsliste gesetzt`);
-                    }}
-                  >
+                  <button className="btn" onClick={() => shopMissing(s.missing)}>
                     <Icon name="cart" /> Fehlendes einkaufen
                   </button>
                 )}
               </div>
             </article>
           ))}
+          {result.ideas.map((idea) => (
+            <article key={idea.title} className="today-card card is-idea">
+              <span className="today-badge is-idea">Neue Idee</span>
+              <div className="today-card-main">
+                <span>
+                  <strong>{idea.title}</strong>
+                  <span className="today-reason">
+                    {idea.description}
+                    {idea.time_minutes ? ` · ca. ${idea.time_minutes} Min.` : ''}
+                  </span>
+                </span>
+              </div>
+              {idea.missing.length > 0 && <p className="today-missing">Fehlt noch: {idea.missing.join(', ')}</p>}
+              <div className="more-actions">
+                <button className="btn btn-primary" onClick={() => workOut(idea)} disabled={!!working}>
+                  <Icon name="sparkle" /> {working === idea.title ? 'Claude schreibt das Rezept …' : 'Rezept ausarbeiten'}
+                </button>
+                {idea.missing.length > 0 && (
+                  <button className="btn" onClick={() => shopMissing(idea.missing)}>
+                    <Icon name="cart" /> Fehlendes einkaufen
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+          {result.fromBook.length + result.ideas.length === 0 && <p className="sync-state">Claude hat keine Vorschläge gefunden – versuch es mit anderen Zutaten oder Wünschen.</p>}
         </div>
       )}
     </div>

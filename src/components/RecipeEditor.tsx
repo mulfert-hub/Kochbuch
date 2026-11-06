@@ -10,8 +10,61 @@ import { addCategory } from '../db/repo';
 import { Icon } from './Icon';
 import { Lightbox } from './Lightbox';
 import { toast, useObjectUrl } from './ui';
+import { useRecipes } from '../hooks';
+import { allTags } from '../lib/search';
 import { resizePhoto } from '../lib/image';
 import { creditOf, downloadPhoto, findPhotos, type PhotoCredit, type PhotoSuggestion } from '../lib/photoSearch';
+
+const TAG_SUGGESTIONS = ['Familie', 'Fleisch', 'Vegetarisch', 'Fisch', 'Schnell', 'Gäste', 'Meal Prep'];
+
+/** Freie Tags: tippen + Enter (oder Komma), vorhandene Tags zum Antippen */
+function TagField({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
+  const recipes = useRecipes();
+  const [text, setText] = useState('');
+  const known = allTags(recipes ?? []);
+  const has = (t: string) => tags.some((x) => x.toLowerCase() === t.toLowerCase());
+  const add = (t: string) => {
+    const v = t.trim().replace(/^#/, '');
+    if (v && !has(v)) onChange([...tags, v]);
+    setText('');
+  };
+  const offer = [...known, ...TAG_SUGGESTIONS.filter((s) => !known.some((k) => k.toLowerCase() === s.toLowerCase()))].filter((t) => !has(t)).slice(0, 12);
+  return (
+    <div className="field">
+      <span>Tags</span>
+      <div className="chip-wrap">
+        {tags.map((t) => (
+          <button type="button" key={t} className="chip tag-chip" aria-pressed="true" onClick={() => onChange(tags.filter((x) => x !== t))} aria-label={`Tag ${t} entfernen`}>
+            #{t} <Icon name="close" size={14} />
+          </button>
+        ))}
+        <input
+          className="chip chip-input"
+          placeholder="+ Tag, z. B. Thea"
+          value={text}
+          aria-label="Neuer Tag"
+          onChange={(e) => (e.target.value.endsWith(',') ? add(e.target.value.slice(0, -1)) : setText(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              add(text);
+            }
+          }}
+          onBlur={() => text.trim() && add(text)}
+        />
+      </div>
+      {offer.length > 0 && (
+        <div className="chip-wrap tag-offers">
+          {offer.map((t) => (
+            <button type="button" key={t} className="chip tag-offer" onClick={() => add(t)}>
+              + {t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Fotovorschläge aus freien Bilddatenbanken (Openverse) zum Rezepttitel */
 function PhotoSuggestions({ title, onPick, onClose }: { title: string; onPick: (b: Blob, c: PhotoCredit) => void; onClose: () => void }) {
@@ -361,6 +414,8 @@ export function RecipeEditor({
             />
           </label>
         </div>
+
+        <TagField tags={value.tags ?? []} onChange={(tags) => set({ tags })} />
 
         <div className="field">
           <span>Kategorien</span>

@@ -13,14 +13,15 @@ export function fold(s: string): string {
     .replace(/[̀-ͯ]/g, '');
 }
 
-export function searchRecipes(recipes: Recipe[], query: string, categoryId?: string | null): Recipe[] {
+export function searchRecipes(recipes: Recipe[], query: string, categoryId?: string | null, tag?: string | null): Recipe[] {
   let list = categoryId ? recipes.filter((r) => r.categoryIds.includes(categoryId)) : recipes;
+  if (tag) list = list.filter((r) => (r.tags ?? []).some((t) => t.toLowerCase() === tag.toLowerCase()));
   const tokens = fold(query).split(/\s+/).filter(Boolean);
   if (!tokens.length) return [...list].sort((a, b) => a.title.localeCompare(b.title, 'de'));
 
   const scored: { r: Recipe; score: number }[] = [];
   for (const r of list) {
-    const title = fold(r.title);
+    const title = fold(r.title) + ' ' + fold((r.tags ?? []).join(' '));
     const ings = fold(r.ingredients.map((i) => `${i.name} ${i.note ?? ''}`).join(' '));
     const steps = fold(r.steps.join(' ') + ' ' + (r.notes ?? ''));
     let score = 0;
@@ -57,4 +58,15 @@ export function snippet(r: Recipe, query: string): string | null {
     }
   }
   return null;
+}
+
+/** Alle verwendeten Tags, häufigste zuerst */
+export function allTags(recipes: Recipe[]): string[] {
+  const count = new Map<string, { name: string; n: number }>();
+  for (const r of recipes)
+    for (const t of r.tags ?? []) {
+      const k = t.toLowerCase();
+      count.set(k, { name: count.get(k)?.name ?? t, n: (count.get(k)?.n ?? 0) + 1 });
+    }
+  return [...count.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'de')).map((x) => x.name);
 }

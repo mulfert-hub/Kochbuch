@@ -20,6 +20,7 @@ function toDraft(r: Recipe): RecipeDraft {
     notes: r.notes,
     timeMinutes: r.timeMinutes,
     categoryIds: r.categoryIds,
+    tags: r.tags ?? [],
     ocrText: r.ocrText ?? '',
   };
 }

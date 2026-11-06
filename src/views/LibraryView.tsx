@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCategories, useMediaQuery, useRecipes } from '../hooks';
 import { navigate } from '../router';
-import { searchRecipes, snippet } from '../lib/search';
+import { allTags, searchRecipes, snippet } from '../lib/search';
 import { Icon } from '../components/Icon';
 import { MoreLink } from '../components/MoreLink';
 import { AdaptSheet, SubstituteSheet } from '../components/AssistSheets';
@@ -82,7 +82,7 @@ function RecipeDetail({ recipe, categories, onBack }: { recipe: Recipe; categori
   );
 }
 
-export function LibraryView({ recipeId }: { recipeId?: string }) {
+export function LibraryView({ recipeId, tagParam }: { recipeId?: string; tagParam?: string | null }) {
   const recipes = useRecipes();
   const categories = useCategories();
   const wide = useMediaQuery('(min-width: 1100px)');
@@ -97,7 +97,16 @@ export function LibraryView({ recipeId }: { recipeId?: string }) {
     else sessionStorage.removeItem('kb-cat');
   }, [query, cat]);
 
-  const results = useMemo(() => (recipes ? searchRecipes(recipes, query, cat) : []), [recipes, query, cat]);
+  const [tag, setTag] = useState<string | null>(() => tagParam ?? sessionStorage.getItem('kb-tag'));
+  useEffect(() => {
+    if (tagParam) setTag(tagParam);
+  }, [tagParam]);
+  useEffect(() => {
+    if (tag) sessionStorage.setItem('kb-tag', tag);
+    else sessionStorage.removeItem('kb-tag');
+  }, [tag]);
+  const tags = useMemo(() => allTags(recipes ?? []), [recipes]);
+  const results = useMemo(() => (recipes ? searchRecipes(recipes, query, cat, tag) : []), [recipes, query, cat, tag]);
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of recipes ?? []) for (const c of r.categoryIds) m.set(c, (m.get(c) ?? 0) + 1);
@@ -161,6 +170,15 @@ export function LibraryView({ recipeId }: { recipeId?: string }) {
           </button>
         ))}
       </div>
+      {tags.length > 0 && (
+        <div className="chips tag-filter" role="toolbar" aria-label="Nach Tag filtern">
+          {tags.map((t) => (
+            <button key={t} className="chip tag-chip" aria-pressed={tag?.toLowerCase() === t.toLowerCase()} onClick={() => setTag(tag?.toLowerCase() === t.toLowerCase() ? null : t)}>
+              #{t}
+            </button>
+          ))}
+        </div>
+      )}
 
       {results.length === 0 ? (
         <div className="empty">

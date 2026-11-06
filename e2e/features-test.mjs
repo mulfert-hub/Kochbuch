@@ -32,9 +32,18 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
   const text = body.messages[0].content.map((c) => c.text ?? '').join('\n');
   seen.push({ props, text });
   let out;
-  if (props.includes('suggestions')) {
+  if (props.includes('from_book')) {
     const id = text.match(/\[([^\]]+)\] Shakshuka/)[1];
-    out = { suggestions: [{ recipe_id: id, reason: 'Eier und Paprika sind da.', missing: ['1 Dose stückige Tomaten', 'Petersilie'], tip: null }, { recipe_id: 'gibt-es-nicht', reason: 'x', missing: [], tip: null }], note: null };
+    out = {
+      from_book: [{ recipe_id: id, reason: 'Eier und Paprika sind da.', missing: ['1 Dose stückige Tomaten', 'Petersilie'], tip: null }, { recipe_id: 'gibt-es-nicht', reason: 'x', missing: [], tip: null }],
+      new_ideas: [
+        { title: 'Kartoffel-Paprika-Pfanne', description: 'Schnell und mild, passt für Thea.', missing: [], time_minutes: 25 },
+        { title: 'Paprika-Frittata', description: 'Resteverwertung mit Eiern.', missing: ['Feta'], time_minutes: 20 },
+        { title: 'Zu viel', description: 'sollte abgeschnitten werden', missing: [], time_minutes: null },
+      ],
+    };
+  } else if (props.includes('is_recipe') && text.startsWith('Gericht:')) {
+    out = { is_recipe: true, title: 'Kartoffel-Paprika-Pfanne', servings: 4, servings_label: 'Portionen', time_minutes: 25, ingredients: [{ group: null, quantity: 600, quantity_max: null, unit: 'g', name: 'Kartoffeln', note: null }, { group: null, quantity: 2, quantity_max: null, unit: '', name: 'Paprikaschoten', note: null }], steps: ['Kartoffeln würfeln und 15 Minuten braten.', 'Paprika zugeben und 10 Minuten mitbraten.'], notes: null, category: 'Hauptgericht' };
   } else if (props.includes('options')) {
     out = { options: [{ replacement: { group: null, quantity: 1, quantity_max: null, unit: '', name: 'Apfel', note: 'fein gerieben' }, explanation: 'Etwas säuerlicher, passt gut.', step_hint: 'Mit dem Brei köcheln.' }], warning: null };
   } else if (props.includes('changes')) {
@@ -99,21 +108,58 @@ check('Abteilung von Hand ändern', (await p.locator('.shop-aisle', { hasText: '
 await p.locator('.shop-add input').fill('Spülmittel');
 await p.locator('.shop-add input').press('Enter');
 
+// ---------- Tags ----------
+await p.goto(`${BASE}#/rezepte`);
+await p.getByRole('button', { name: /Overnight Oats/ }).click();
+await p.getByRole('button', { name: 'Bearbeiten' }).click();
+await p.locator('input[aria-label="Neuer Tag"]').fill('Thea');
+await p.locator('input[aria-label="Neuer Tag"]').press('Enter');
+await p.locator('.tag-offer', { hasText: 'Familie' }).click();
+await p.getByRole('button', { name: /^Speichern$/ }).click();
+await p.waitForSelector('.recipe-tags');
+check('Tags am Rezept', (await p.locator('.recipe-tags .tag-pill').allTextContents()).join(' ') === '#Thea #Familie');
+await p.locator('.tag-pill', { hasText: 'Thea' }).click();
+await p.waitForSelector('.tag-filter');
+check('Tag antippen filtert die Rezeptliste', (await p.locator('.recipe-row-title').allTextContents()).join(',') === 'Overnight Oats mit Beeren');
+await p.locator('.tag-filter .chip', { hasText: 'Thea' }).click();
+await p.locator('.search input').fill('thea');
+await p.waitForTimeout(200);
+check('Suche findet Tags', (await p.locator('.recipe-row-title').allTextContents()).join(',') === 'Overnight Oats mit Beeren');
+await p.locator('.search input').fill('');
+
 // ---------- Was koche ich heute? ----------
 await p.goto(`${BASE}#/buch`);
 await p.getByRole('button', { name: /Was koche ich heute/ }).first().click();
 await p.waitForSelector('.today');
 await p.locator('.today textarea').fill('Eier, Paprika, Zwiebeln');
 await p.getByRole('button', { name: 'schnell' }).click();
-await p.getByRole('button', { name: /Vorschläge holen/ }).click();
+await p.getByRole('button', { name: '#Thea' }).click();
+await p.getByRole('button', { name: /3 Vorschläge holen/ }).click();
 await p.waitForSelector('.today-card');
-const req = seen.find((s) => s.props.includes('suggestions'));
-check('Anfrage enthält Vorräte, Wunsch und das Kochbuch', req.text.includes('Eier, Paprika') && req.text.includes('schnell') && req.text.includes('Zimtschnecken'));
-check('Vorschlag aus dem eigenen Buch, unbekannte IDs verworfen', (await p.locator('.today-card').count()) === 1 && (await p.locator('.today-card strong').first().textContent()) === 'Shakshuka');
-await p.getByRole('button', { name: /Fehlendes einkaufen/ }).click();
+const req = seen.find((s) => s.props.includes('from_book'));
+check('Anfrage enthält Vorräte, Wünsche, Tags und das Kochbuch', req.text.includes('Eier, Paprika') && req.text.includes('schnell') && req.text.includes('#Thea') && req.text.includes('Zimtschnecken'));
+const badges = await p.locator('.today-badge').allTextContents();
+check('Genau 3 Vorschläge: 1 aus dem Buch + 2 neue Ideen', badges.join(',') === 'Aus eurem Buch,Neue Idee,Neue Idee', badges.join(','));
+check('Buch-Vorschlag zuerst, unbekannte IDs verworfen', (await p.locator('.today-card strong').first().textContent()) === 'Shakshuka');
+await p.getByRole('button', { name: /Fehlendes einkaufen/ }).first().click();
 await p.waitForTimeout(300);
 await p.goto(`${BASE}#/einkauf`);
-check('Fehlendes auf der Einkaufsliste', (await p.locator('.shop-name').allTextContents()).some((t) => t.includes('Tomaten')));
+await p.waitForSelector('.shop-name');
+check('Fehlendes auf der Einkaufsliste', (await p.locator('.shop-name').allTextContents()).some((t) => t.includes('Tomaten')), (await p.locator('.shop-name').allTextContents()).join(', '));
+
+// Idee ausarbeiten → Prüfbildschirm → speichern
+await p.goto(`${BASE}#/heute`);
+await p.getByRole('button', { name: '#Thea' }).click();
+await p.getByRole('button', { name: /3 Vorschläge holen/ }).click();
+await p.waitForSelector('.today-card.is-idea');
+await p.locator('.today-card.is-idea').first().getByRole('button', { name: /Rezept ausarbeiten/ }).click();
+await p.waitForSelector('.editor');
+check('Idee als Rezept im Prüfbildschirm', (await p.locator('.input-title').inputValue()) === 'Kartoffel-Paprika-Pfanne' && (await p.locator('.ing-row').count()) === 2);
+check('Hinweis „noch nicht ausprobiert“', (await p.locator('.confidence').textContent()).includes('noch nicht ausprobiert'));
+check('Gewählter Tag übernommen', (await p.locator('.tag-chip[aria-pressed="true"]').allTextContents()).some((t) => t.includes('Thea')));
+await p.getByRole('button', { name: /Speichern/ }).last().click();
+await p.waitForSelector('.recipe-title');
+check('Neues Rezept im Buch, mit Tag und Notiz', (await p.locator('.recipe-title').textContent()) === 'Kartoffel-Paprika-Pfanne' && (await p.locator('.recipe-tags').textContent()).includes('Thea') && (await p.locator('.recipe-notes').textContent()).includes('noch nicht ausprobiert'));
 
 // ---------- Zutat ersetzen ----------
 await p.goto(`${BASE}#/rezepte`);

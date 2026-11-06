@@ -2325,3 +2325,69 @@ h1.cook-step-no {
 .recipe-actions .btn {
   flex: 1 1 auto;
 }
+
+/* ---------- Tags ---------- */
+
+.recipe-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -8px 0 16px;
+}
+
+.tag-pill {
+  border: 0;
+  background: var(--sage-soft);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 32px;
+}
+
+.tag-chip[aria-pressed='true'] {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: var(--surface);
+}
+
+.tag-chip svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tag-offers {
+  margin-top: 4px;
+}
+
+.tag-offer {
+  border-style: dashed;
+  min-height: 34px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.tag-filter {
+  margin-top: -2px;
+}
+
+.today-badge {
+  justify-self: start;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--sage-soft);
+  color: var(--ink-2);
+}
+
+.today-badge.is-idea {
+  background: var(--accent-soft);
+}
+
+.today-card.is-idea {
+  border-style: dashed;
+}

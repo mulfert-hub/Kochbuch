@@ -79,13 +79,16 @@ export function ReviewView() {
               Prüfen{total > 1 ? ` · Rezept ${st.current + 1} von ${total}` : ''}
             </div>
             <h1 className="page-title">Stimmt alles?</h1>
+            {entry.draft.source === 'idea' && (
+              <p className="confidence ok">Von Claude vorgeschlagen – noch nicht ausprobiert. Mengen und Zeiten bitte beim ersten Kochen prüfen.</p>
+            )}
             {entry.draft.source === 'claude' && (
               <p className="confidence good">
                 Von Claude erkannt. Bitte kurz Mengen und Schritte prüfen.
                 {!entry.draft.title.trim() && ' Im Bild steht kein Rezeptname – bitte selbst eintragen.'}
               </p>
             )}
-            {entry.draft.source !== 'claude' && conf != null && entry.draft.ocrText && (
+            {!entry.draft.source && conf != null && entry.draft.ocrText && (
               <p className={`confidence ${conf > 0.75 ? 'good' : conf > 0.45 ? 'ok' : 'low'}`}>
                 {conf > 0.75
                   ? 'Gut erkannt. Bitte trotzdem kurz Mengen prüfen.'
