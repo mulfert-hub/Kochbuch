@@ -10,8 +10,11 @@ import { App } from './App';
 import { firstRunSetup } from './db/seed';
 import { applyTheme } from './theme';
 import { initUpdates } from './update';
+import { initSync } from './sync/sync';
 
 applyTheme();
+// Rücksprung von der Google-Anmeldung auswerten und automatische Synchronisation starten
+initSync();
 
 // Service Worker registrieren (offline + automatische Updates)
 initUpdates().catch(() => {});

@@ -1,8 +1,7 @@
 // Beispielrezepte als Testdaten, damit alle Ansichten sofort etwas zeigen.
 import { db } from './db';
-import { ensureDefaultCategories } from './repo';
+import { ensureDefaultCategories, slug } from './repo';
 import { parseIngredientLine } from '../lib/ingredientParser';
-import { uid } from '../lib/id';
 import type { Recipe } from '../types';
 
 interface SeedRecipe {
@@ -188,7 +187,7 @@ export async function seedSampleRecipes(): Promise<number> {
       ingredients.push(parseIngredientLine(line, group));
     }
     return {
-      id: uid(),
+      id: `seed-${slug(s.title)}`,
       title: s.title,
       servings: s.servings,
       servingsLabel: s.servingsLabel ?? 'Portionen',
@@ -202,8 +201,11 @@ export async function seedSampleRecipes(): Promise<number> {
       updatedAt: now - idx * 1000,
     };
   });
-  await db.recipes.bulkAdd(recipes);
-  return recipes.length;
+  // Bereits vorhandene Beispielrezepte nicht doppelt anlegen
+  const existing = new Set(await db.recipes.where('id').anyOf(recipes.map((r) => r.id)).primaryKeys());
+  await db.recipes.bulkAdd(recipes.filter((r) => !existing.has(r.id)));
+  await db.tombstones.bulkDelete(recipes.map((r) => r.id));
+  return recipes.filter((r) => !existing.has(r.id)).length;
 }
 
 /** Beim allerersten Start Kategorien + Beispielrezepte anlegen. */

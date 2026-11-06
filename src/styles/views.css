@@ -1827,3 +1827,26 @@
     grid-template-columns: repeat(5, 1fr);
   }
 }
+
+.sync-state {
+  margin-top: 12px !important;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--sage-soft);
+  font-size: 14.5px !important;
+}
+
+.sync-state.is-error {
+  background: var(--accent-soft);
+}
+
+.sync-setup {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.sync-setup code {
+  word-break: break-all;
+  font-size: 12.5px;
+}

@@ -1,5 +1,5 @@
 // Export/Import aller Daten als eine JSON-Datei (Bilder als Base64-Data-URLs).
-import { db } from './db';
+import { addTombstones, db } from './db';
 import type { Category, Recipe, ShoppingItem, StoredImage } from '../types';
 
 const FORMAT = 'kochbuch-backup';
@@ -124,8 +124,15 @@ export async function restoreBackup(file: File, mode: 'merge' | 'replace'): Prom
     }
   }
 
-  await db.transaction('rw', [db.recipes, db.categories, db.images, db.shopping], async () => {
+  await db.transaction('rw', [db.recipes, db.categories, db.images, db.shopping, db.tombstones], async () => {
     if (mode === 'replace') {
+      const keep = new Set(data.recipes.map((r) => r.id));
+      const keepCats = new Set((data.categories ?? []).map((c) => c.id));
+      const ids = (await db.recipes.toCollection().primaryKeys()) as string[];
+      const catIds = (await db.categories.toCollection().primaryKeys()) as string[];
+      await addTombstones('recipe', ids.filter((id) => !keep.has(id)));
+      await addTombstones('category', catIds.filter((id) => !keepCats.has(id)));
+      await db.tombstones.bulkDelete([...keep, ...keepCats]);
       await Promise.all([db.recipes.clear(), db.categories.clear(), db.images.clear(), db.shopping.clear()]);
     }
     if (mode === 'merge') {

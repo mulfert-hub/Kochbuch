@@ -20,6 +20,8 @@ Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, di
 - **Inhaltsverzeichnis** nach Kategorien. Kategorien anlegen, umbenennen, sortieren, löschen. Mehrere Kategorien pro Rezept möglich.
 - **Portionen umrechnen** mit +/–. Brüche bei EL, TL und Stück („1½“, „¾“), Dezimalzahlen mit Komma und sinnvoller Rundung bei g und ml („190 g“ statt „187,5 g“), Plural („1 Zehe“ → „2 Zehen“).
 - **Einkaufsliste**: aus einem oder mehreren Rezepten (Rezeptliste → „Auswählen“). Gleiche Zutaten werden zusammengefasst und Einheiten umgerechnet (500 g + 1 kg = 1,5 kg). Abhaken, löschen, leeren, eigene Einträge.
+- **Foto vom Gericht**: per Kamera oder aus der Mediathek, oder ein **Beispielfoto** aus freien Bilddatenbanken (Openverse) mit automatischem Bildnachweis.
+- **Synchronisation** über ein gemeinsames Google-Konto (versteckter App-Ordner in Google Drive): Rezepte, Kategorien und Fotos auf mehreren Handys gleich halten. Einrichtung siehe unten.
 - **Backup**: Export und Import aller Daten inklusive Bilder als eine JSON-Datei, zusammenführen oder ersetzen.
 - **Offline** nach dem ersten Laden, installierbar auf dem Homescreen, Dark Mode passend zum System.
 
@@ -41,6 +43,7 @@ Weitere Befehle:
 | `npm run build` | Produktions-Build nach `dist/` (mit Service Worker) |
 | `npm run preview` | gebauten Stand lokal ausliefern (auch im WLAN) |
 | `npm test` | Unit-Tests (Mengen, Zutaten-Parser, Rezept-Heuristik, Einkaufsliste, Seiten zusammenfügen, Spaltenerkennung) |
+| `npm run test:sync` | Synchronisationstest mit zwei „Handys“ und nachgebildetem Google Drive (nach `build`) |
 | `npm run test:app` | Funktionstest im Browser: Blättern, Portionen, Einkaufsliste, Suche, Backup, Offline (nach `build`) |
 | `npm run test:ocr` | OCR-Test mit Beispiel-Screenshots, siehe [docs/OCR-TEST.md](docs/OCR-TEST.md) (nach `build`) |
 | `npm run fixtures` | Beispiel-Screenshots für den OCR-Test neu erzeugen |
@@ -81,6 +84,32 @@ Die Adresse auf dem Handy (im selben WLAN) öffnen. Über `http://192.168…` fu
 - Die Daten liegen im Browser-Speicher des Geräts. **Mach regelmäßig ein Backup** (Mehr → Backup exportieren) und speichere die Datei z. B. in iCloud Drive oder Google Drive.
 - iOS kann Speicher von Webseiten, die lange nicht geöffnet wurden, löschen. Als **installierte App** auf dem Homescreen ist das deutlich unwahrscheinlicher. Die App bittet dann um „dauerhaften Speicher“ (Status unter Mehr → Speicher).
 - Wichtig: Safari und die Homescreen-App haben auf dem iPhone **getrennte Speicher**. Nutze die App immer über das Homescreen-Symbol.
+
+## Synchronisation über Google Drive einrichten
+
+Einmalig, etwa 10 Minuten, am besten am Computer. Alles mit dem **gemeinsamen Google-Konto** erledigen.
+
+1. [console.cloud.google.com](https://console.cloud.google.com) öffnen und mit dem gemeinsamen Konto anmelden.
+2. Oben auf die Projektauswahl tippen → **„Neues Projekt“** → Name „Kochbuch“ → **Erstellen**. Danach sicherstellen, dass oben „Kochbuch“ ausgewählt ist.
+3. Menü ☰ → **„APIs und Dienste“ → „Bibliothek“** → nach **„Google Drive API“** suchen → **Aktivieren**.
+4. Menü ☰ → **„Google Auth Platform“** (bzw. „APIs und Dienste → OAuth-Zustimmungsbildschirm“) → **„Jetzt starten“**:
+   - App-Name: „Kochbuch“, Nutzersupport-E-Mail: euer Konto
+   - Zielgruppe: **Extern**
+   - Kontaktdaten: euer Konto → Zustimmen → **Erstellen**
+5. Links **„Zielgruppe“** → bei „Testnutzer“ **„Nutzer hinzufügen“** → die E-Mail-Adresse des gemeinsamen Kontos eintragen → Speichern. Der Status „Testen“ kann so bleiben.
+6. Links **„Clients“** → **„Client erstellen“**:
+   - Anwendungstyp: **Webanwendung**, Name: „Kochbuch-App“
+   - Autorisierte JavaScript-Quellen: `https://mulfert-hub.github.io`
+   - Autorisierte Weiterleitungs-URIs: `https://mulfert-hub.github.io/Kochbuch/` (genau so, mit Schrägstrich am Ende)
+   - **Erstellen** → die **Client-ID** kopieren (endet auf `.apps.googleusercontent.com`). Ein Client-Schlüssel („secret“) wird nicht gebraucht.
+7. Client-ID in die App bringen, eine von zwei Möglichkeiten:
+   - in der App unter **Mehr → Synchronisation** eintragen (auf jedem Handy), oder
+   - einmalig im Repository unter **Settings → Secrets and variables → Actions → Variables** als `GOOGLE_CLIENT_ID` anlegen. Dann ist sie nach der nächsten Veröffentlichung auf allen Handys schon eingetragen.
+8. Auf jedem Handy: **Mehr → Synchronisation → „Mit Google Drive verbinden“** → mit dem gemeinsamen Konto anmelden. Hinweis „Google hat diese App nicht überprüft“ → **„Weiter“** (es ist eure eigene App).
+
+**So funktioniert es:** Die App speichert in einem versteckten App-Ordner in Google Drive (im Drive nicht sichtbar, die App sieht auch nichts anderes). Synchronisiert wird beim Öffnen der App und wenige Sekunden nach jeder Änderung. Pro Rezept gewinnt die neuere Änderung, gelöschte Rezepte bleiben gelöscht, gleiche Kategorien und doppelte Beispielrezepte werden zusammengelegt. Die Einkaufsliste bleibt pro Handy getrennt. Ohne Internet arbeitet die App normal weiter und gleicht später ab.
+
+**Datenschutz:** Mit eingeschalteter Synchronisation liegen Rezepte und Fotos zusätzlich in eurem Google Drive. Ohne Synchronisation verlässt nichts das Handy (außer dem Rezepttitel, wenn ihr Fotovorschläge nutzt).
 
 ## Technik
 

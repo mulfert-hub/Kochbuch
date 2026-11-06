@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:ocr": "node e2e/ocr-test.mjs",
     "test:app": "node e2e/app-test.mjs",
+    "test:sync": "node e2e/sync-test.mjs",
     "fixtures": "node e2e/fixtures/make-fixtures.mjs"
   },
   "dependencies": {

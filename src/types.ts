@@ -46,6 +46,7 @@ export interface Category {
   id: string;
   name: string;
   order: number;
+  updatedAt?: number;
 }
 
 export interface StoredImage {

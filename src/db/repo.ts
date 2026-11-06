@@ -1,16 +1,28 @@
 // Lese-/Schreibfunktionen rund um Rezepte, Kategorien, Bilder und Einkaufsliste.
-import { db } from './db';
+import { addTombstones, db, tombstoneRecipes } from './db';
 import type { Category, Ingredient, Recipe, RecipeDraft, ShoppingItem } from '../types';
 import { uid } from '../lib/id';
 import type { PhotoCredit } from '../lib/photoSearch';
 import { mergeIntoList } from '../lib/shopping';
 import { parseIngredientLine } from '../lib/ingredientParser';
 
+export function slug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 export const DEFAULT_CATEGORIES = ['Frühstück', 'Vorspeise', 'Hauptgericht', 'Beilage', 'Dessert', 'Backen'];
 
 export async function ensureDefaultCategories(): Promise<void> {
   if ((await db.categories.count()) > 0) return;
-  await db.categories.bulkAdd(DEFAULT_CATEGORIES.map((name, order) => ({ id: uid(), name, order })));
+  // Feste IDs, damit zwei Geräte beim Synchronisieren dieselben Standard-Kategorien haben
+  await db.categories.bulkAdd(DEFAULT_CATEGORIES.map((name, order) => ({ id: `cat-${slug(name)}`, name, order })));
 }
 
 // ---------- Rezepte ----------
@@ -78,9 +90,11 @@ export async function setRecipePhoto(id: string, photo: Blob | null, credit: Pho
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
-  await db.transaction('rw', db.recipes, db.images, async () => {
+  await db.transaction('rw', db.recipes, db.images, db.tombstones, async () => {
+    const r = await db.recipes.get(id);
     await db.images.where('recipeId').equals(id).delete();
     await db.recipes.delete(id);
+    if (r) await tombstoneRecipes([r]);
   });
 }
 
@@ -116,11 +130,12 @@ export async function renameCategory(id: string, name: string): Promise<void> {
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  await db.transaction('rw', db.categories, db.recipes, async () => {
+  await db.transaction('rw', db.categories, db.recipes, db.tombstones, async () => {
     await db.categories.delete(id);
+    await addTombstones('category', [id]);
     const affected = await db.recipes.where('categoryIds').equals(id).toArray();
     for (const r of affected) {
-      await db.recipes.update(r.id, { categoryIds: r.categoryIds.filter((c) => c !== id) });
+      await db.recipes.update(r.id, { categoryIds: r.categoryIds.filter((c) => c !== id), updatedAt: Date.now() });
     }
   });
 }

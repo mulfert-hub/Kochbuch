@@ -1,17 +1,90 @@
 // Backup (Export/Import), Beispieldaten, OCR offline bereitstellen, Speicherinfo.
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { db, tombstoneRecipes } from '../db/db';
 import { downloadBackup, restoreBackup } from '../db/backup';
 import { seedSampleRecipes } from '../db/seed';
 import { Icon } from '../components/Icon';
 import { getTheme, setTheme, type ThemeChoice } from '../theme';
 import { APP_BUILD_TIME, APP_VERSION, checkForUpdate } from '../update';
+import { disableSync, enableSync, syncNow, useSyncStatus } from '../sync/sync';
+import { getClientId, redirectUri, setClientId } from '../sync/googleAuth';
 import { choiceDialog, confirmDialog, toast } from '../components/ui';
 
 function fmtBytes(n: number) {
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
   return `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
+function SyncCard() {
+  const st = useSyncStatus();
+  const [clientId, setClientIdState] = useState(getClientId());
+  const [showSetup, setShowSetup] = useState(false);
+  const last = st.lastSync ? new Date(st.lastSync).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : null;
+  return (
+    <section className="more-card card">
+      <h2>Synchronisation</h2>
+      <p>
+        Rezepte, Kategorien und Fotos über euer gemeinsames Google Drive abgleichen. Die App speichert in einem versteckten App-Ordner und sieht
+        nichts anderes in eurem Drive. Die Einkaufsliste bleibt auf jedem Handy getrennt.
+      </p>
+      {!st.configured || showSetup ? (
+        <div className="sync-setup">
+          <label className="field">
+            <span>Google-Client-ID</span>
+            <input className="input mono" placeholder="…apps.googleusercontent.com" value={clientId} onChange={(e) => setClientIdState(e.target.value)} />
+          </label>
+          <p className="hint">
+            Einmalig in der Google Cloud Console anlegen (siehe Anleitung in der README). Als Weiterleitungs-URI eintragen: <code>{redirectUri()}</code>
+          </p>
+          <div className="more-actions">
+            <button
+              className="btn btn-primary"
+              disabled={!/\.apps\.googleusercontent\.com$/.test(clientId.trim())}
+              onClick={() => {
+                setClientId(clientId);
+                setShowSetup(false);
+                toast('Client-ID gespeichert');
+              }}
+            >
+              Speichern
+            </button>
+          </div>
+        </div>
+      ) : st.enabled ? (
+        <>
+          <p className={`sync-state${st.error ? ' is-error' : ''}`}>
+            {st.running ? 'Synchronisiere …' : st.message ?? (last ? `Zuletzt synchronisiert: ${last}` : 'Noch nicht synchronisiert.')}
+          </p>
+          <div className="more-actions">
+            <button className="btn btn-primary" disabled={st.running} onClick={() => syncNow(true)}>
+              <Icon name="refresh" /> Jetzt synchronisieren
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={async () => {
+                if (await confirmDialog({ title: 'Synchronisation ausschalten?', text: 'Die Rezepte bleiben auf diesem Handy und in Google Drive erhalten.', confirm: 'Ausschalten' })) disableSync();
+              }}
+            >
+              Ausschalten
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {st.message && <p className="sync-state is-error">{st.message}</p>}
+          <div className="more-actions">
+            <button className="btn btn-primary" onClick={() => enableSync()}>
+              <Icon name="refresh" /> Mit Google Drive verbinden
+            </button>
+            <button className="btn btn-ghost" onClick={() => setShowSetup(true)}>
+              Client-ID ändern
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
 }
 
 export function MoreView() {
@@ -96,6 +169,8 @@ export function MoreView() {
           ))}
         </div>
       </section>
+
+      <SyncCard />
 
       <section className="more-card card">
         <h2>Backup</h2>
@@ -198,7 +273,10 @@ export function MoreView() {
                 danger: true,
               });
               if (!ok) return;
-              await Promise.all([db.recipes.clear(), db.images.clear(), db.shopping.clear()]);
+              await db.transaction('rw', db.recipes, db.images, db.shopping, db.tombstones, async () => {
+                await tombstoneRecipes(await db.recipes.toArray());
+                await Promise.all([db.recipes.clear(), db.images.clear(), db.shopping.clear()]);
+              });
               toast('Alle Rezepte gelöscht');
             }}
           >
