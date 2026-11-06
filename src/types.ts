@@ -88,8 +88,6 @@ export interface RecipeDraft {
   /** Foto vom Gericht: Blob = neu/geändert, null = entfernen, undefined = unverändert */
   photo?: Blob | null;
   photoCredit?: PhotoCredit | null;
-  /** Titel wurde aus den Zutaten abgeleitet (kein Name im Screenshot erkennbar) */
-  titleDerived?: boolean;
   /** Wie sicher die Heuristik ist (0–1) – nur zur Anzeige. */
   confidence?: number;
 }

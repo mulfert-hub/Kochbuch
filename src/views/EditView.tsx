@@ -55,7 +55,7 @@ export function EditView({ id }: { id: string }) {
   if (recipe === null || !draft) return <div className="page"><div className="empty"><h2>Rezept nicht gefunden</h2></div></div>;
 
   const save = async () => {
-    const { photo, photoCredit, confidence: _c, titleDerived: _t, ...fields } = draft;
+    const { photo, photoCredit, confidence: _c, ...fields } = draft;
     await updateRecipe(id, { ...fields, title: fields.title.trim() || 'Ohne Titel' });
     if (photo !== originalPhoto) await setRecipePhoto(id, photo ?? null, photoCredit ?? null);
     toast('Änderungen gespeichert');

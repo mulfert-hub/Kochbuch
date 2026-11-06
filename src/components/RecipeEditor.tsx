@@ -6,7 +6,6 @@ import { ingredientToLine, parseIngredientLine } from '../lib/ingredientParser';
 import { parseLeadingQuantity } from '../lib/quantity';
 import { UNITS, lookupUnit } from '../lib/units';
 import { linesFromPlainText, parseRecipe } from '../lib/recipeParser';
-import { suggestTitle } from '../lib/titleSuggest';
 import { uid } from '../lib/id';
 import { addCategory } from '../db/repo';
 import { Icon } from './Icon';
@@ -331,30 +330,10 @@ export function RecipeEditor({
 
       <div className="editor-form">
         {heading}
-        <div className="field">
-          <div className="field-label-row">
-            <label htmlFor="recipe-title">Titel</label>
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => {
-                const t = suggestTitle(value.ingredients, value.steps);
-                if (t) set({ title: t, titleDerived: true });
-                else toast('Dafür braucht es mindestens eine Zutat');
-              }}
-            >
-              <Icon name="sparkle" size={16} /> Titel vorschlagen
-            </button>
-          </div>
-          <input
-            id="recipe-title"
-            className="input input-title"
-            value={value.title}
-            onChange={(e) => set({ title: e.target.value, titleDerived: false })}
-            placeholder="Name des Rezepts"
-          />
-          {value.titleDerived && <p className="hint">Kein Rezeptname im Bild gefunden – der Titel wurde aus den Zutaten abgeleitet. Gern anpassen.</p>}
-        </div>
+        <label className="field">
+          <span>Titel</span>
+          <input className="input input-title" value={value.title} onChange={(e) => set({ title: e.target.value })} placeholder="Name des Rezepts" />
+        </label>
 
         <PhotoField
           photo={value.photo}

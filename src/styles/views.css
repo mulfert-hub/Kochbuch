@@ -1850,29 +1850,3 @@
   word-break: break-all;
   font-size: 12.5px;
 }
-
-.field-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.field-label-row label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-}
-
-.link-btn {
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 2px;
-}
