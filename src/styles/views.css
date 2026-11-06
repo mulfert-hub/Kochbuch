@@ -1850,3 +1850,10 @@
   word-break: break-all;
   font-size: 12.5px;
 }
+.claude-models {
+  grid-template-columns: 1fr 1fr;
+}
+
+.claude-models button span {
+  font-size: 12px;
+}

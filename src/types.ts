@@ -88,6 +88,8 @@ export interface RecipeDraft {
   /** Foto vom Gericht: Blob = neu/geändert, null = entfernen, undefined = unverändert */
   photo?: Blob | null;
   photoCredit?: PhotoCredit | null;
+  /** Wer das Rezept erkannt hat */
+  source?: 'claude';
   /** Wie sicher die Heuristik ist (0–1) – nur zur Anzeige. */
   confidence?: number;
 }
