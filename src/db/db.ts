@@ -62,7 +62,7 @@ function notify() {
   setTimeout(() => changeListeners.forEach((l) => l()), 0);
 }
 
-for (const table of [db.recipes, db.categories, db.images, db.tombstones, db.shopping] as const) {
+for (const table of [db.recipes, db.categories, db.images, db.tombstones, db.shopping, db.settings] as const) {
   table.hook('creating', notify);
   table.hook('updating', () => {
     notify();
@@ -104,4 +104,15 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function setSetting(key: string, value: unknown): Promise<void> {
   await db.settings.put({ key, value });
+}
+
+// ---------- Tag-Bedeutungen („Thea“ = „mild, ohne Alkohol“) – werden synchronisiert ----------
+import type { TagInfoMap } from '../lib/tags';
+export async function getTagInfo(): Promise<TagInfoMap> {
+  return (await getSetting<TagInfoMap>('tagInfo', {})) ?? {};
+}
+export async function setTagMeaning(tag: string, desc: string): Promise<void> {
+  const info = await getTagInfo();
+  info[tag] = { desc: desc.trim(), updatedAt: Date.now() };
+  await setSetting('tagInfo', info);
 }

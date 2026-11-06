@@ -54,12 +54,12 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
       ],
     };
   } else if (props.includes('is_recipe') && text.startsWith('Gericht:')) {
-    out = { is_recipe: true, title: 'Kartoffel-Paprika-Pfanne', servings: 4, servings_label: 'Portionen', time_minutes: 25, ingredients: [{ group: null, quantity: 600, quantity_max: null, unit: 'g', name: 'Kartoffeln', note: null }, { group: null, quantity: 2, quantity_max: null, unit: '', name: 'Paprikaschoten', note: null }], steps: ['Kartoffeln würfeln und 15 Minuten braten.', 'Paprika zugeben und 10 Minuten mitbraten.'], notes: null, category: 'Hauptgericht' };
+    out = { is_recipe: true, title: 'Kartoffel-Paprika-Pfanne', servings: 4, servings_label: 'Portionen', time_minutes: 25, ingredients: [{ group: null, quantity: 600, quantity_max: null, unit: 'g', name: 'Kartoffeln', note: null }, { group: null, quantity: 2, quantity_max: null, unit: '', name: 'Paprikaschoten', note: null }], steps: ['Kartoffeln würfeln und 15 Minuten braten.', 'Paprika zugeben und 10 Minuten mitbraten.'], notes: null, category: 'Hauptgericht', tags: ['vegetarisch', 'schnell'] };
   } else if (props.includes('options')) {
     out = { options: [{ replacement: { group: null, quantity: 1, quantity_max: null, unit: '', name: 'Apfel', note: 'fein gerieben' }, explanation: 'Etwas säuerlicher, passt gut.', step_hint: 'Mit dem Brei köcheln.' }], warning: null };
   } else if (props.includes('changes')) {
     out = {
-      recipe: { is_recipe: true, title: 'Shakshuka (vegan)', servings: 2, servings_label: 'Portionen', time_minutes: 30, ingredients: [{ group: null, quantity: 200, quantity_max: null, unit: 'g', name: 'Seidentofu', note: null }, { group: null, quantity: 1, quantity_max: null, unit: 'Dose', name: 'stückige Tomaten', note: null }], steps: ['Tomaten 10 Minuten einköcheln.', 'Tofu zerbröseln und 5 Minuten ziehen lassen.'], notes: null, category: 'Frühstück' },
+      recipe: { is_recipe: true, title: 'Shakshuka (vegan)', servings: 2, servings_label: 'Portionen', time_minutes: 30, ingredients: [{ group: null, quantity: 200, quantity_max: null, unit: 'g', name: 'Seidentofu', note: null }, { group: null, quantity: 1, quantity_max: null, unit: 'Dose', name: 'stückige Tomaten', note: null }], steps: ['Tomaten 10 Minuten einköcheln.', 'Tofu zerbröseln und 5 Minuten ziehen lassen.'], notes: null, category: 'Frühstück', tags: ['vegan'] },
       changes: ['Eier durch Seidentofu ersetzt'],
     };
   }

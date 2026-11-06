@@ -1,7 +1,8 @@
 // Claude als Küchenhilfe: „Was koche ich heute?“, „Zutat ersetzen“, „Rezept anpassen“.
 import * as z from 'zod/v4';
 import type { Category, Ingredient, Recipe, RecipeDraft } from '../types';
-import { callClaude, IngredientSchema, RecipeSchema, toDraft } from './claudeRecipe';
+import { callClaude, IngredientSchema, RecipeSchema, tagContext, toDraft } from './claudeRecipe';
+import { cleanSuggestedTags, GENERAL_TAGS } from '../lib/tags';
 import { ingredientToLine } from '../lib/ingredientParser';
 import { lookupUnit } from '../lib/units';
 
@@ -77,17 +78,18 @@ export async function whatToCook(
 
 /** Eine Idee zum vollständigen Rezept ausarbeiten lassen */
 export async function ideaToRecipe(idea: RecipeIdea, available: string, wishes: string[], categories: Category[]): Promise<RecipeDraft> {
+  const tags = await tagContext();
   const out = await callClaude(
     RecipeSchema,
     `${BASE} Schreibe ein vollständiges, alltagstaugliches Rezept mit genauen Mengen, Portionen (Standard 4, falls nicht anders gewünscht), Zeit und klaren Schritten. Setze is_recipe auf true. Kategorien zur Auswahl: ${categories.map((c) => c.name).join(', ')}.`,
     [
       {
         type: 'text',
-        text: `Gericht: ${idea.title}\n${idea.description}\nVorhanden: ${available.trim() || '(keine Angabe)'}\n${wishes.length ? `Wünsche: ${wishes.join(', ')}` : ''}`,
+        text: `Gericht: ${idea.title}\n${idea.description}\nVorhanden: ${available.trim() || '(keine Angabe)'}\n${wishes.length ? `Wünsche: ${wishes.join(', ')}` : ''}\n${tags.text}`,
       },
     ],
   );
-  const draft = toDraft(out, categories);
+  const draft = toDraft(out, categories, tags.allowed);
   if (!draft.title) draft.title = idea.title;
   draft.source = 'idea';
   draft.notes = [draft.notes, 'Von Claude vorgeschlagen – noch nicht ausprobiert.'].filter(Boolean).join('\n\n');
@@ -145,15 +147,44 @@ const AdaptSchema = z.object({
 });
 
 export async function adaptRecipe(recipe: Recipe, goal: string, categories: Category[]): Promise<{ draft: RecipeDraft; changes: string[] }> {
+  const tags = await tagContext();
   const out = await callClaude(
     AdaptSchema,
     `${BASE} Passe das Rezept an den Wunsch an. Behalte Charakter, Portionen und Aufbau, ändere nur, was nötig ist. Setze is_recipe auf true und category auf die bisherige Kategorie, falls passend. Kategorien: ${categories.map((c) => c.name).join(', ')}.`,
-    [{ type: 'text', text: `${recipeAsText(recipe)}\n\nAnpassung: ${goal}` }],
+    [{ type: 'text', text: `${recipeAsText(recipe)}\n\nAnpassung: ${goal}\n${tags.text}` }],
   );
-  const draft = toDraft(out.recipe, categories);
+  const draft = toDraft(out.recipe, categories, tags.allowed);
   if (!draft.title) draft.title = `${recipe.title} (${goal})`;
   if (!draft.categoryIds.length) draft.categoryIds = recipe.categoryIds;
-  draft.tags = recipe.tags ?? [];
+  // Claudes Vorschläge (z. B. „vegan“ statt „Fleisch“) + eigene Tags des Originals, die nicht zur festen Liste gehören
+  const general = new Set(GENERAL_TAGS.map((t) => t.toLowerCase()));
+  draft.tags = [...new Set([...(draft.tags ?? []), ...(recipe.tags ?? []).filter((t) => !general.has(t.toLowerCase()))])];
   draft.notes = [draft.notes, `Angepasst aus „${recipe.title}“: ${goal}.`].filter(Boolean).join('\n\n');
   return { draft, changes: out.changes };
+}
+
+// ---------- Tags für bestehende Rezepte vorschlagen ----------
+const TagBatchSchema = z.object({
+  results: z.array(z.object({ recipe_id: z.string(), tags: z.array(z.string()).describe('3 bis 5 Tags aus der Liste') })),
+});
+
+/** Schlägt für jedes Rezept Tags vor (nur neue, die es noch nicht hat). Arbeitet in Paketen à 40 Rezepte. */
+export async function suggestTagsForRecipes(recipes: Recipe[], onProgress?: (done: number) => void): Promise<Map<string, string[]>> {
+  const ctx = await tagContext();
+  const result = new Map<string, string[]>();
+  for (let i = 0; i < recipes.length; i += 40) {
+    const chunk = recipes.slice(i, i + 40);
+    const list = chunk
+      .map((r) => `[${r.id}] ${r.title}${r.timeMinutes ? ` (${r.timeMinutes} Min.)` : ''}: ${r.ingredients.map((x) => x.name).join(', ')}${r.tags?.length ? ` – hat schon: ${r.tags.join(', ')}` : ''}`)
+      .join('\n');
+    const out = await callClaude(TagBatchSchema, `${BASE} Vergib für jedes Rezept 3 bis 5 passende Tags.`, [{ type: 'text', text: `${ctx.text}\n\nRezepte:\n${list}` }]);
+    for (const r of out.results) {
+      const recipe = chunk.find((x) => x.id === r.recipe_id);
+      if (!recipe) continue;
+      const fresh = cleanSuggestedTags(r.tags, ctx.allowed).filter((t) => !(recipe.tags ?? []).some((h) => h.toLowerCase() === t.toLowerCase()));
+      if (fresh.length) result.set(recipe.id, fresh);
+    }
+    onProgress?.(Math.min(recipes.length, i + 40));
+  }
+  return result;
 }

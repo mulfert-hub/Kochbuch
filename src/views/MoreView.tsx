@@ -10,6 +10,12 @@ import { APP_BUILD_TIME, APP_VERSION, checkForUpdate } from '../update';
 import { connect, disconnect, syncNow, useSyncStatus } from '../sync/sync';
 import { CLAUDE_MODELS, getApiKey, getModel, setApiKey, setModel, testApiKey, type ClaudeModel } from '../ai/claudeRecipe';
 import { choiceDialog, confirmDialog, toast } from '../components/ui';
+import { updateRecipe } from '../db/repo';
+import { setTagMeaning } from '../db/db';
+import { allTags } from '../lib/search';
+import { GENERAL_TAGS, type TagInfoMap } from '../lib/tags';
+import { claudeConfigured } from '../ai/claudeRecipe';
+import type { Recipe } from '../types';
 
 function fmtBytes(n: number) {
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
@@ -174,6 +180,124 @@ function SyncCard() {
   );
 }
 
+/** Eigene Tags erklären (damit Claude sie passend vergeben kann) und bestehende Rezepte verschlagworten */
+function TagsCard() {
+  const recipes = useLiveQuery(() => db.recipes.toArray(), []);
+  const info = useLiveQuery(async () => ((await db.settings.get('tagInfo'))?.value as TagInfoMap | undefined) ?? {}, []);
+  const tags = allTags(recipes ?? []);
+  const personal = tags.filter((t) => !GENERAL_TAGS.some((g) => g.toLowerCase() === t.toLowerCase()));
+  const [busy, setBusy] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<{ recipe: Recipe; tags: string[]; on: boolean }[] | null>(null);
+  const [newTag, setNewTag] = useState('');
+
+  const suggest = async () => {
+    if (!recipes?.length) return;
+    setBusy('Claude liest die Rezepte …');
+    try {
+      const { suggestTagsForRecipes } = await import('../ai/claudeAssist');
+      const map = await suggestTagsForRecipes(recipes, (n) => setBusy(`Claude liest die Rezepte … ${n} von ${recipes.length}`));
+      const list = recipes.filter((r) => map.has(r.id)).map((r) => ({ recipe: r, tags: map.get(r.id)!, on: true }));
+      if (!list.length) toast('Claude hat keine neuen Tags gefunden');
+      setProposal(list.length ? list : null);
+    } catch (e) {
+      toast((e as Error).message || 'Claude konnte keine Tags vorschlagen');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const apply = async () => {
+    if (!proposal) return;
+    const chosen = proposal.filter((p) => p.on);
+    for (const p of chosen) await updateRecipe(p.recipe.id, { tags: [...(p.recipe.tags ?? []), ...p.tags] });
+    setProposal(null);
+    toast(`Tags bei ${chosen.length} Rezept${chosen.length === 1 ? '' : 'en'} ergänzt`);
+  };
+
+  return (
+    <section className="more-card card tags-card">
+      <h2>Tags</h2>
+      <p>
+        Claude schlägt beim Einlesen 3–5 Tags vor. Allgemeine Tags wie „vegetarisch“ oder „schnell“ kennt Claude. Eure eigenen Tags (z. B. „Thea“)
+        vergibt Claude nur, wenn hier steht, was sie bedeuten.
+      </p>
+      {personal.map((t) => (
+        <MeaningRow key={t} tag={t} value={info?.[t]?.desc ?? ''} />
+      ))}
+      <form
+        className="link-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = newTag.trim().replace(/^#/, '');
+          if (!v) return;
+          void setTagMeaning(v, info?.[v]?.desc ?? '');
+          setNewTag('');
+        }}
+      >
+        <input className="input" placeholder="Eigenen Tag hinzufügen, z. B. Thea" value={newTag} onChange={(e) => setNewTag(e.target.value)} aria-label="Eigenen Tag hinzufügen" />
+        <button className="btn" type="submit" disabled={!newTag.trim()}>
+          <Icon name="plus" /> Hinzufügen
+        </button>
+      </form>
+      {Object.keys(info ?? {})
+        .filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()))
+        .map((t) => (
+          <MeaningRow key={t} tag={t} value={info?.[t]?.desc ?? ''} />
+        ))}
+
+      <div className="more-actions">
+        <button className="btn btn-primary" onClick={suggest} disabled={!!busy || !recipes?.length || !claudeConfigured()}>
+          <Icon name="sparkle" /> {busy ?? 'Tags für bestehende Rezepte vorschlagen'}
+        </button>
+      </div>
+      {!claudeConfigured() && <p className="hint">Dafür zuerst oben den Claude-Schlüssel eintragen.</p>}
+
+      {proposal && (
+        <div className="tag-proposal">
+          <p className="hint">Vorschläge – Häkchen entfernen, was nicht passt:</p>
+          <ul>
+            {proposal.map((p, i) => (
+              <li key={p.recipe.id}>
+                <label>
+                  <input type="checkbox" checked={p.on} onChange={() => setProposal(proposal.map((x, j) => (j === i ? { ...x, on: !x.on } : x)))} />
+                  <span>
+                    <strong>{p.recipe.title || 'Ohne Titel'}</strong> {p.tags.map((t) => `#${t}`).join(' ')}
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="more-actions">
+            <button className="btn btn-primary" onClick={apply} disabled={!proposal.some((p) => p.on)}>
+              Übernehmen
+            </button>
+            <button className="btn btn-ghost" onClick={() => setProposal(null)}>
+              Verwerfen
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MeaningRow({ tag, value }: { tag: string; value: string }) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  return (
+    <label className="field">
+      <span>#{tag} bedeutet …</span>
+      <input
+        className="input"
+        placeholder="z. B. mild, ohne Alkohol – leer lassen: Claude vergibt den Tag nicht"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => text.trim() !== value && void setTagMeaning(tag, text)}
+      />
+    </label>
+  );
+}
+
 export function MoreView() {
   const counts = useLiveQuery(async () => ({ r: await db.recipes.count(), i: await db.images.count() }), []);
   const [busy, setBusy] = useState<string | null>(null);
@@ -257,6 +381,8 @@ export function MoreView() {
       </section>
 
       <ClaudeCard />
+
+      <TagsCard />
 
       <SyncCard />
 

@@ -3,6 +3,7 @@
 // Löschung neuer ist als die letzte Änderung; gleiche Kategorien (Name) und exakt doppelte Rezepte
 // (z. B. Beispielrezepte auf beiden Handys) werden zusammengelegt. Reine Funktion, damit testbar.
 import type { Category, Recipe, ShoppingItem } from '../types';
+import type { TagInfoMap } from './tags';
 import { fold } from './search';
 
 export interface SyncTombstone {
@@ -19,6 +20,8 @@ export interface Snapshot {
   tombstones: SyncTombstone[];
   /** Einkaufsliste (ältere Datenstände ohne Liste: undefined) */
   shopping?: ShoppingItem[];
+  /** Bedeutungen von Tags */
+  tagInfo?: TagInfoMap;
 }
 
 function newer<T extends { updatedAt?: number }>(a: T | undefined, b: T | undefined): T | undefined {
@@ -92,7 +95,11 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot, now = Date.now()): Snap
   for (const i of [...(a.shopping ?? []), ...(b.shopping ?? [])]) shopMap.set(i.id, newer(shopMap.get(i.id), i)!);
   const shopping = [...shopMap.values()].filter((i) => !deleted(i.id, i.updatedAt)).sort((x, y) => x.order - y.order || (x.id < y.id ? -1 : 1));
 
-  return { recipes, categories, tombstones: [...tomb.values()], shopping };
+  // 5) Tag-Bedeutungen: pro Tag neuere gewinnt
+  const tagInfo: TagInfoMap = { ...(a.tagInfo ?? {}) };
+  for (const [k, v] of Object.entries(b.tagInfo ?? {})) if (!tagInfo[k] || v.updatedAt > tagInfo[k].updatedAt) tagInfo[k] = v;
+
+  return { recipes, categories, tombstones: [...tomb.values()], shopping, tagInfo };
 }
 
 /** Alle Bild-IDs, die von Rezepten benutzt werden */

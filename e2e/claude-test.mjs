@@ -29,6 +29,7 @@ const RECIPE = {
   ],
   steps: ['Hirse mit Wasser ca. 10–15 Minuten weich köcheln.', 'Apfel schälen, fein reiben und die letzten 5 Minuten mitköcheln lassen.'],
   notes: 'Bei säuerlichem Apfel etwas Birne ergänzen.', category: 'Frühstück',
+  tags: ['vegan', 'lecker', 'Thea', 'schnell'],
 };
 let mode = 'ok';
 const seen = [];
@@ -45,6 +46,11 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
   const body = JSON.parse(req.postData());
   seen.push({ body, headers: h });
   if (mode === 'rate') return route.fulfill({ status: 429, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'slow down' } }) });
+  if (JSON.stringify(body.system ?? '').includes('Vergib für jedes Rezept')) {
+    const ids = [...JSON.stringify(body.messages).matchAll(/\[([\w-]+)\] /g)].map((m) => m[1]);
+    const out = { results: ids.map((id) => ({ recipe_id: id, tags: ['Thea', 'Frühstück-Liebling', 'vegetarisch'] })) };
+    return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ id: 'msg_t', type: 'message', role: 'assistant', model: body.model, stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 10, output_tokens: 10 }, content: [{ type: 'text', text: JSON.stringify(out) }] }) });
+  }
   const out = mode === 'norecipe' ? { ...RECIPE, is_recipe: false, ingredients: [], steps: [] } : mode === 'notitle' ? { ...RECIPE, title: '' } : RECIPE;
   return route.fulfill({
     status: 200,
@@ -93,6 +99,30 @@ check('Hinweis „Von Claude erkannt“', (await p.locator('.confidence').textCo
 await p.getByRole('button', { name: /Speichern/ }).last().click();
 await p.waitForSelector('.recipe-title');
 check('Rezept gespeichert', (await p.locator('.recipe-title').textContent()) === 'Hirse-Apfel-Brei');
+const recipeUrl = p.url();
+const savedTags = await p.locator('.recipe-tags').textContent();
+check('Tags von Claude: nur erlaubte übernommen (vegan, schnell – nicht „lecker“, nicht „Thea“ ohne Bedeutung)', savedTags.includes('vegan') && savedTags.includes('schnell') && !savedTags.includes('lecker') && !savedTags.includes('Thea'), savedTags);
+
+// Eigenen Tag „Thea“ erklären → Claude darf ihn vergeben; bestehende Rezepte verschlagworten
+await p.goto(`${BASE}#/mehr`);
+await p.getByLabel('Eigenen Tag hinzufügen').fill('Thea');
+await p.getByRole('button', { name: 'Hinzufügen', exact: true }).click();
+const meaning = p.getByLabel('#Thea bedeutet …');
+await meaning.fill('mild, ohne Alkohol');
+await meaning.blur();
+await p.waitForTimeout(300);
+await p.getByRole('button', { name: /Tags für bestehende Rezepte vorschlagen/ }).click();
+await p.waitForSelector('.tag-proposal', { timeout: 15000 });
+const batchReq = seen[seen.length - 1];
+check('Bedeutung von „Thea“ geht an Claude', JSON.stringify(batchReq.body.messages).includes('Thea (= mild, ohne Alkohol)'));
+const prop = await p.locator('.tag-proposal').textContent();
+check('Vorschlag: Thea + vegetarisch, kein erfundener Tag', prop.includes('#Thea') && prop.includes('#vegetarisch') && !prop.includes('Liebling'), prop);
+await p.getByRole('button', { name: 'Übernehmen' }).click();
+await p.waitForTimeout(300);
+await p.goto(recipeUrl);
+await p.waitForSelector('.recipe-tags');
+const after = await p.locator('.recipe-tags').textContent();
+check('Tags übernommen und alte behalten', after.includes('Thea') && after.includes('vegetarisch') && after.includes('vegan'), after);
 
 // Text einfügen → Claude (ohne Rezeptnamen → leerer Titel mit Hinweis)
 mode = 'notitle';

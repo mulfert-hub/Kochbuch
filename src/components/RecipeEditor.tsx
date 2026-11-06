@@ -13,9 +13,10 @@ import { toast, useObjectUrl } from './ui';
 import { useRecipes } from '../hooks';
 import { allTags } from '../lib/search';
 import { resizePhoto } from '../lib/image';
+import { GENERAL_TAGS } from '../lib/tags';
 import { creditOf, downloadPhoto, findPhotos, type PhotoCredit, type PhotoSuggestion } from '../lib/photoSearch';
 
-const TAG_SUGGESTIONS = ['Familie', 'Fleisch', 'Vegetarisch', 'Fisch', 'Schnell', 'Gäste', 'Meal Prep'];
+const TAG_SUGGESTIONS = ['Familie', ...GENERAL_TAGS];
 
 /** Freie Tags: tippen + Enter (oder Komma), vorhandene Tags zum Antippen */
 function TagField({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {

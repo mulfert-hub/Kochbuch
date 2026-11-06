@@ -88,6 +88,9 @@ export function ReviewView() {
                 {!entry.draft.title.trim() && ' Im Bild steht kein Rezeptname – bitte selbst eintragen.'}
               </p>
             )}
+            {entry.draft.source && (entry.draft.tags?.length ?? 0) > 0 && (
+              <p className="hint tag-hint">Die Tags hat Claude vorgeschlagen – antippen zum Entfernen.</p>
+            )}
             {!entry.draft.source && conf != null && entry.draft.ocrText && (
               <p className={`confidence ${conf > 0.75 ? 'good' : conf > 0.45 ? 'ok' : 'low'}`}>
                 {conf > 0.75

@@ -6,6 +6,8 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { Category, Ingredient, RecipeDraft } from '../types';
 import { lookupUnit, UNITS } from '../lib/units';
 import { uid } from '../lib/id';
+import { allowedTags, cleanSuggestedTags, describeTags } from '../lib/tags';
+import { allTags } from '../lib/search';
 
 const KEY_STORAGE = 'kochbuch-anthropic-key';
 const MODEL_STORAGE = 'kochbuch-claude-model';
@@ -77,6 +79,7 @@ export const RecipeSchema = z.object({
   steps: z.array(z.string()).describe('Zubereitungsschritte in der Reihenfolge, je Schritt ein vollständiger Text'),
   notes: z.string().nullable().describe('Tipps oder Hinweise aus dem Rezept, sonst null'),
   category: z.string().nullable().describe('passende Kategorie aus der Liste oder null'),
+  tags: z.array(z.string()).describe('3 bis 5 passende Tags, ausschließlich aus der vorgegebenen Tag-Liste'),
 });
 export type ClaudeRecipe = z.infer<typeof RecipeSchema>;
 
@@ -186,12 +189,23 @@ async function requestWith(
   tools: Anthropic.Beta.BetaToolUnion[] | undefined,
   notRecipe: string,
 ): Promise<RecipeDraft> {
-  const r = await callClaude(RecipeSchema, SYSTEM, content, tools);
+  const tags = await tagContext();
+  const r = await callClaude(RecipeSchema, SYSTEM, [...content, { type: 'text', text: tags.text }], tools);
   if (!r.is_recipe) throw new ClaudeError(notRecipe, 'not-recipe');
-  return toDraft(r, categories);
+  return toDraft(r, categories, tags.allowed);
 }
 
-export function toDraft(r: ClaudeRecipe, categories: Category[]): RecipeDraft {
+/** Erlaubte Tags (vorhandene + feste Liste + persönliche mit Bedeutung) und ihre Beschreibung für Claude */
+export async function tagContext(): Promise<{ allowed: { name: string; meaning?: string }[]; text: string }> {
+  const { db, getTagInfo } = await import('../db/db');
+  const allowed = allowedTags(allTags(await db.recipes.toArray()), await getTagInfo());
+  return {
+    allowed,
+    text: `Tags: Wähle 3 bis 5 passende ausschließlich aus dieser Liste (persönliche Tags nur, wenn die Bedeutung zutrifft): ${describeTags(allowed)}.`,
+  };
+}
+
+export function toDraft(r: ClaudeRecipe, categories: Category[], allowed?: { name: string }[]): RecipeDraft {
   const ingredients: Ingredient[] = r.ingredients
     .filter((i) => i.name.trim())
     .map((i) => ({
@@ -213,6 +227,7 @@ export function toDraft(r: ClaudeRecipe, categories: Category[]): RecipeDraft {
     steps: r.steps.map((s) => s.trim()).filter(Boolean),
     notes: r.notes?.trim() || undefined,
     categoryIds: cat ? [cat.id] : [],
+    tags: allowed ? cleanSuggestedTags(r.tags ?? [], allowed) : [],
     ocrText: '',
     source: 'claude',
   };

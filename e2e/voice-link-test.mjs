@@ -53,7 +53,7 @@ await ctx.route('https://api.anthropic.com/**', async (route) => {
   if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
   const body = JSON.parse(req.postData());
   seen.push(body);
-  const out = { is_recipe: true, title: 'Bananenbrot', servings: 12, servings_label: 'Scheiben', time_minutes: 70, ingredients: [{ group: null, quantity: 3, quantity_max: null, unit: '', name: 'reife Bananen', note: null }, { group: null, quantity: 250, quantity_max: null, unit: 'g', name: 'Mehl', note: null }], steps: ['Bananen zerdrücken.', '60 Minuten backen.'], notes: null, category: 'Backen' };
+  const out = { is_recipe: true, title: 'Bananenbrot', servings: 12, servings_label: 'Scheiben', time_minutes: 70, ingredients: [{ group: null, quantity: 3, quantity_max: null, unit: '', name: 'reife Bananen', note: null }, { group: null, quantity: 250, quantity_max: null, unit: 'g', name: 'Mehl', note: null }], steps: ['Bananen zerdrücken.', '60 Minuten backen.'], notes: null, category: 'Backen', tags: ['Backen', 'vegetarisch'] };
   return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ id: 'msg', type: 'message', role: 'assistant', model: body.model, stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 }, content: [{ type: 'server_tool_use', id: 'srv1', name: 'web_fetch', input: { url: 'https://example.org/bananenbrot' } }, { type: 'text', text: JSON.stringify(out) }] }) });
 });
 const p = await ctx.newPage();
