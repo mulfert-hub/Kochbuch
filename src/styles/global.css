@@ -1,25 +1,29 @@
 /* ------------------------------------------------------------
    Kochbuch – Designsystem
-   Ruhige „Papier & Tinte“-Palette, Fraunces für Überschriften,
+   Helle, freundliche Palette (Papierweiß, Tomatenrot, Kräutergrün), Fraunces für Überschriften,
    Instrument Sans für Bedienelemente. Mobile first, Dark Mode via System.
    ------------------------------------------------------------ */
 
 :root {
-  --paper: #f4efe6;
-  --surface: #fbf8f2;
-  --surface-2: #efe8dc;
-  --ink: #1f1a15;
-  --ink-2: #4a423a;
-  --muted: #7a6f62;
-  --line: #e2d8c8;
-  --line-strong: #cfc2ae;
-  --accent: #b4462a;
-  --accent-ink: #fff8f2;
-  --accent-soft: #f2ddd2;
-  --sage: #61775a;
-  --sage-soft: #dfe6d6;
-  --shadow-page: 0 1px 0 rgba(60, 40, 20, 0.04), 0 12px 30px -12px rgba(60, 40, 20, 0.18), 0 2px 6px rgba(60, 40, 20, 0.06);
-  --shadow-pop: 0 18px 50px -12px rgba(40, 25, 10, 0.35);
+  /* Hell: fast weißes Papier, frisches Tomatenrot, Kräutergrün */
+  --paper: #fffcf8;
+  --surface: #ffffff;
+  --surface-2: #f7f2ec;
+  --ink: #2b2622;
+  --ink-2: #514a44;
+  --muted: #8c847b;
+  --line: #efe8df;
+  --line-strong: #e0d6ca;
+  --accent: #e4573d;
+  --accent-ink: #ffffff;
+  --accent-soft: #fde8e2;
+  --sage: #4f9a62;
+  --sage-soft: #e2f2e5;
+  --danger: #c8341f;
+  --danger-soft: #fdecea;
+  --page-edge: rgba(228, 87, 61, 0.035);
+  --shadow-page: 0 1px 0 rgba(80, 50, 30, 0.03), 0 14px 34px -14px rgba(80, 50, 30, 0.16), 0 2px 6px rgba(80, 50, 30, 0.05);
+  --shadow-pop: 0 18px 50px -12px rgba(60, 35, 20, 0.28);
 
   --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
   --font-ui: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -33,27 +37,55 @@
   --safe-t: env(safe-area-inset-top, 0px);
   --gutter: 20px;
 
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
+/* Dunkel: neutrales, weiches Anthrazit statt Braun.
+   Gilt bei System-Dunkelmodus (außer „Hell“ ist erzwungen) oder wenn „Dunkel“ gewählt ist. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #14120f;
-    --surface: #1c1915;
-    --surface-2: #26221c;
-    --ink: #efe7da;
-    --ink-2: #cfc4b3;
-    --muted: #9b8f7e;
-    --line: #2e2922;
-    --line-strong: #40392f;
-    --accent: #e8875f;
-    --accent-ink: #1a0f0a;
-    --accent-soft: #3b2419;
-    --sage: #9db58f;
-    --sage-soft: #26301f;
-    --shadow-page: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
-    --shadow-pop: 0 18px 50px -12px rgba(0, 0, 0, 0.7);
+  :root:not([data-theme='light']) {
+    --paper: #1c1c1f;
+    --surface: #26262a;
+    --surface-2: #303035;
+    --ink: #f4f1ec;
+    --ink-2: #d6d2cc;
+    --muted: #a8a39c;
+    --line: #38383e;
+    --line-strong: #4a4a51;
+    --accent: #ff7d5e;
+    --accent-ink: #1f0f0a;
+    --accent-soft: #452a24;
+    --sage: #86cf97;
+    --sage-soft: #233528;
+    --danger: #ff8a80;
+    --danger-soft: #3d1f1c;
+    --page-edge: rgba(255, 255, 255, 0.03);
+    --shadow-page: 0 1px 0 rgba(0, 0, 0, 0.25), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
+    --shadow-pop: 0 18px 50px -12px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --paper: #1c1c1f;
+  --surface: #26262a;
+  --surface-2: #303035;
+  --ink: #f4f1ec;
+  --ink-2: #d6d2cc;
+  --muted: #a8a39c;
+  --line: #38383e;
+  --line-strong: #4a4a51;
+  --accent: #ff7d5e;
+  --accent-ink: #1f0f0a;
+  --accent-soft: #452a24;
+  --sage: #86cf97;
+  --sage-soft: #233528;
+  --danger: #ff8a80;
+  --danger-soft: #3d1f1c;
+  --page-edge: rgba(255, 255, 255, 0.03);
+  --shadow-page: 0 1px 0 rgba(0, 0, 0, 0.25), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 18px 50px -12px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
 }
 
 *,
@@ -375,14 +407,8 @@ a {
 }
 
 .btn-danger {
-  color: #b3261e;
-  border-color: color-mix(in srgb, #b3261e 30%, var(--line));
-}
-
-@media (prefers-color-scheme: dark) {
-  .btn-danger {
-    color: #ff8a80;
-  }
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
 }
 
 .btn-block {
@@ -580,7 +606,7 @@ a {
 }
 
 .dialog::backdrop {
-  background: rgba(20, 14, 8, 0.45);
+  background: rgba(30, 25, 22, 0.4);
   backdrop-filter: blur(2px);
 }
 

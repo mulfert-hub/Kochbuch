@@ -8,6 +8,9 @@ import './styles/global.css';
 import './styles/views.css';
 import { App } from './App';
 import { firstRunSetup } from './db/seed';
+import { applyTheme } from './theme';
+
+applyTheme();
 
 // Service Worker registrieren (offline + Updates automatisch)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

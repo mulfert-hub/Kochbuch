@@ -7,7 +7,7 @@ const page = await browser.newPage();
 async function render(size, file, { maskable = false } = {}) {
   await page.setViewportSize({ width: size, height: size });
   const inner = maskable
-    ? `<div style="width:${size}px;height:${size}px;background:#b4462a;display:grid;place-items:center"><div style="width:${size * 0.8}px;height:${size * 0.8}px">${svg.replace('rx="112"', 'rx="0"')}</div></div>`
+    ? `<div style="width:${size}px;height:${size}px;background:#e4573d;display:grid;place-items:center"><div style="width:${size * 0.8}px;height:${size * 0.8}px">${svg.replace('rx="112"', 'rx="0"')}</div></div>`
     : svg;
   await page.setContent(`<html><body style="margin:0;background:transparent">${inner}</body></html><style>svg{width:100%;height:100%;display:block}</style>`);
   await page.screenshot({ path: file, omitBackground: !maskable, clip: { x: 0, y: 0, width: size, height: size } });

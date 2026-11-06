@@ -5,6 +5,7 @@ import { db } from '../db/db';
 import { downloadBackup, restoreBackup } from '../db/backup';
 import { seedSampleRecipes } from '../db/seed';
 import { Icon } from '../components/Icon';
+import { getTheme, setTheme, type ThemeChoice } from '../theme';
 import { choiceDialog, confirmDialog, toast } from '../components/ui';
 
 function fmtBytes(n: number) {
@@ -18,6 +19,7 @@ export function MoreView() {
   const [storage, setStorage] = useState<{ usage: number; quota: number; persisted: boolean } | null>(null);
   const [ocrState, setOcrState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const file = useRef<HTMLInputElement>(null);
+  const [theme, setThemeState] = useState<ThemeChoice>(getTheme());
 
   useEffect(() => {
     (async () => {
@@ -67,6 +69,32 @@ export function MoreView() {
           <h1 className="page-title">Mehr</h1>
         </div>
       </div>
+
+      <section className="more-card card">
+        <h2>Aussehen</h2>
+        <p>Hell, dunkel oder automatisch wie dein Handy.</p>
+        <div className="segmented theme-switch" role="radiogroup" aria-label="Farbschema">
+          {(
+            [
+              ['light', 'Hell'],
+              ['dark', 'Dunkel'],
+              ['system', 'Automatisch'],
+            ] as [ThemeChoice, string][]
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              role="radio"
+              aria-checked={theme === v}
+              onClick={() => {
+                setTheme(v);
+                setThemeState(v);
+              }}
+            >
+              <strong>{label}</strong>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="more-card card">
         <h2>Backup</h2>
