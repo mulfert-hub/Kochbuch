@@ -1,0 +1,7 @@
+node_modules
+dist
+public/tesseract
+*.local
+.DS_Store
+e2e/output
+*.tsbuildinfo
