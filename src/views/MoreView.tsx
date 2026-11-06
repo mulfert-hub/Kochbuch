@@ -28,7 +28,16 @@ function SyncCard() {
         Rezepte, Kategorien und Fotos über euer gemeinsames Google Drive abgleichen. Die App speichert in einem versteckten App-Ordner und sieht
         nichts anderes in eurem Drive. Die Einkaufsliste bleibt auf jedem Handy getrennt.
       </p>
-      {!st.configured || showSetup ? (
+      {!st.configured && !showSetup ? (
+        <>
+          <p className="sync-state">Noch nicht eingerichtet.</p>
+          <div className="more-actions">
+            <button className="btn btn-ghost" onClick={() => setShowSetup(true)}>
+              Einrichten
+            </button>
+          </div>
+        </>
+      ) : showSetup ? (
         <div className="sync-setup">
           <label className="field">
             <span>Google-Client-ID</span>
