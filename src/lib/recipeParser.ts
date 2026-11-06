@@ -1,6 +1,7 @@
 // Heuristik: OCR-Text (Zeilen mit Höhe/Absatz-Info) → Rezeptentwurf.
 import type { Ingredient, RecipeDraft } from '../types';
 import { lookupUnit } from './units';
+import { isPlausibleTitle, suggestTitle } from './titleSuggest';
 import { isPureQuantity, normalizeOcrLine, parseIngredientLine, reorderColumns, startsWithQuantity } from './ingredientParser';
 
 export interface OcrLine {
@@ -390,7 +391,18 @@ export function parseRecipe(rawLines: OcrLine[]): RecipeDraft {
     (lines.some((l) => isIngHeader(l.text)) ? 0.075 : 0) +
     (lines.some((l) => isStepHeader(l.text)) ? 0.075 : 0);
 
+  // Kein brauchbarer Name im Screenshot → aus Zutaten und Zubereitung ableiten
+  let titleDerived = false;
+  if (!title || !isPlausibleTitle(title)) {
+    const derived = suggestTitle(ingredients, steps);
+    if (derived) {
+      title = derived;
+      titleDerived = true;
+    }
+  }
+
   return {
+    titleDerived,
     title: title || 'Neues Rezept',
     servings,
     servingsLabel: label,
