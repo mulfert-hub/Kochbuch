@@ -2,12 +2,12 @@
 // Regeln: pro Rezept/Kategorie gewinnt die neuere Änderung; Gelöschtes bleibt gelöscht, wenn die
 // Löschung neuer ist als die letzte Änderung; gleiche Kategorien (Name) und exakt doppelte Rezepte
 // (z. B. Beispielrezepte auf beiden Handys) werden zusammengelegt. Reine Funktion, damit testbar.
-import type { Category, Recipe } from '../types';
+import type { Category, Recipe, ShoppingItem } from '../types';
 import { fold } from './search';
 
 export interface SyncTombstone {
   id: string;
-  kind: 'recipe' | 'category';
+  kind: 'recipe' | 'category' | 'shopping';
   deletedAt: number;
   /** Inhaltsschlüssel gelöschter Rezepte: entfernt auch inhaltsgleiche Kopien auf anderen Geräten */
   key?: string;
@@ -17,6 +17,8 @@ export interface Snapshot {
   recipes: Recipe[];
   categories: Category[];
   tombstones: SyncTombstone[];
+  /** Einkaufsliste (ältere Datenstände ohne Liste: undefined) */
+  shopping?: ShoppingItem[];
 }
 
 function newer<T extends { updatedAt?: number }>(a: T | undefined, b: T | undefined): T | undefined {
@@ -85,7 +87,12 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot, now = Date.now()): Snap
   }
   recipes = [...seen.values()];
 
-  return { recipes, categories, tombstones: [...tomb.values()] };
+  // 4) Einkaufsliste: pro Eintrag neuere Version gewinnt, Gelöschtes raus
+  const shopMap = new Map<string, ShoppingItem>();
+  for (const i of [...(a.shopping ?? []), ...(b.shopping ?? [])]) shopMap.set(i.id, newer(shopMap.get(i.id), i)!);
+  const shopping = [...shopMap.values()].filter((i) => !deleted(i.id, i.updatedAt)).sort((x, y) => x.order - y.order || (x.id < y.id ? -1 : 1));
+
+  return { recipes, categories, tombstones: [...tomb.values()], shopping };
 }
 
 /** Alle Bild-IDs, die von Rezepten benutzt werden */

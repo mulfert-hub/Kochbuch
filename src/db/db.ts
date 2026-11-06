@@ -5,7 +5,7 @@ import { contentKey } from '../lib/syncMerge';
 /** Merkzettel für gelöschte Einträge, damit die Synchronisation sie nicht wieder herstellt */
 export interface Tombstone {
   id: string;
-  kind: 'recipe' | 'category';
+  kind: 'recipe' | 'category' | 'shopping';
   deletedAt: number;
   key?: string;
 }
@@ -62,7 +62,7 @@ function notify() {
   setTimeout(() => changeListeners.forEach((l) => l()), 0);
 }
 
-for (const table of [db.recipes, db.categories, db.images, db.tombstones] as const) {
+for (const table of [db.recipes, db.categories, db.images, db.tombstones, db.shopping] as const) {
   table.hook('creating', notify);
   table.hook('updating', () => {
     notify();
@@ -71,11 +71,16 @@ for (const table of [db.recipes, db.categories, db.images, db.tombstones] as con
   table.hook('deleting', notify);
 }
 
-// Kategorien bekommen einen Änderungszeitpunkt (für „neuere Änderung gewinnt“)
-db.categories.hook('creating', (_key, obj) => {
-  if (obj.updatedAt == null) obj.updatedAt = Date.now();
-});
-db.categories.hook('updating', (mods) => (muted || 'updatedAt' in mods ? undefined : { updatedAt: Date.now() }));
+// Kategorien und Einkaufsliste bekommen einen Änderungszeitpunkt (für „neuere Änderung gewinnt“).
+// Nur bei echten Änderungen – ein unverändertes Speichern darf den Zeitpunkt nicht verschieben.
+for (const table of [db.categories, db.shopping] as const) {
+  (table as typeof db.categories).hook('creating', (_key, obj) => {
+    if (!muted && obj.updatedAt == null) obj.updatedAt = Date.now();
+  });
+  (table as typeof db.categories).hook('updating', (mods) =>
+    muted || 'updatedAt' in mods || Object.keys(mods).length === 0 ? undefined : { updatedAt: Date.now() },
+  );
+}
 
 /** Gelöschte Einträge vormerken */
 export async function addTombstones(kind: Tombstone['kind'], ids: string[], keys?: Map<string, string>): Promise<void> {

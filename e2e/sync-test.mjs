@@ -1,10 +1,9 @@
 // Synchronisationstest mit zwei „Handys“ (getrennte Browser-Profile) und einem nachgebildeten
-// Google Drive (Anmeldung + Drive-API werden im Browser abgefangen). Aufruf: npm run build && npm run test:sync
+// privaten GitHub-Repository (die GitHub-API wird im Browser abgefangen). Aufruf: npm run build && npm run test:sync
 import { chromium } from '../scripts/pw.mjs';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const PORT = 4193;
@@ -26,76 +25,67 @@ const check = (name, ok, extra = '') => {
   if (!ok) failed++;
 };
 
-// ---------- Nachgebildetes Google Drive (ein gemeinsames Konto) ----------
-const drive = new Map(); // id → { name, body: Buffer, type }
+// ---------- Nachgebildetes GitHub (privates Daten-Repository) ----------
+const files = new Map(); // path → { sha, body: Buffer }
+let shaCounter = 0;
 let requests = 0;
-function parseMultipart(buf, contentType) {
-  const boundary = contentType.match(/boundary=(.+)$/)[1].replace(/^"|"$/g, '');
-  const parts = buf.toString('latin1').split(`--${boundary}`).slice(1, -1);
-  const out = [];
-  for (const p of parts) {
-    const idx = p.indexOf('\r\n\r\n');
-    const head = p.slice(0, idx);
-    const body = Buffer.from(p.slice(idx + 4, p.length - 2), 'latin1');
-    out.push({ head, body });
-  }
-  return out;
-}
+let forceConflict = 0; // nächste n Schreibzugriffe auf kochbuch.json mit 409 beantworten
+let repoPrivate = true;
+const commits = [];
 
-async function mockGoogle(ctx) {
-  await ctx.route('https://accounts.google.com/**', async (route) => {
-    const u = new URL(route.request().url());
-    const back = `${u.searchParams.get('redirect_uri')}#access_token=tok-${randomUUID()}&token_type=Bearer&expires_in=3600&state=${u.searchParams.get('state')}`;
-    await route.fulfill({ status: 302, headers: { location: back } });
-  });
-  await ctx.route('https://www.googleapis.com/**', async (route) => {
+async function mockGitHub(ctx) {
+  await ctx.route('https://api.github.com/**', async (route) => {
     requests++;
     const req = route.request();
+    const h = await req.allHeaders();
+    const cors = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'ETag, X-RateLimit-Remaining' };
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { ...cors, 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
+    if (h['authorization'] !== 'Bearer github_pat_TESTTOKEN_1234567890') return route.fulfill({ status: 401, headers: cors, body: '{"message":"Bad credentials"}' });
     const u = new URL(req.url());
-    const cors = { 'access-control-allow-origin': '*' };
-    if (!req.headers()['authorization']?.startsWith('Bearer tok-')) return route.fulfill({ status: 401, headers: cors, body: 'no auth' });
-    const m = u.pathname.match(/\/files\/?([^/]*)$/);
-    const id = m?.[1];
-    if (req.method() === 'GET' && !id) {
-      const files = [...drive.entries()].map(([fid, f]) => ({ id: fid, name: f.name }));
-      return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ files }) });
-    }
-    if (req.method() === 'GET' && id) {
-      const f = drive.get(id);
-      if (!f) return route.fulfill({ status: 404, headers: cors, body: '' });
-      return route.fulfill({ status: 200, headers: { ...cors, 'content-type': f.type }, body: f.body });
-    }
-    if (req.method() === 'POST') {
-      // Wie bei Google: nur multipart/related wird angenommen
-      if (!/^multipart\/related;\s*boundary=/.test(req.headers()['content-type'] ?? '')) {
-        return route.fulfill({ status: 400, headers: cors, body: 'Bad content type, expected multipart/related' });
+    const json = (status, body) => route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (u.pathname === '/repos/familie/kochbuch-daten') return json(200, { private: repoPrivate, permissions: { push: true } });
+    const m = u.pathname.match(/^\/repos\/familie\/kochbuch-daten\/contents\/(.+)$/);
+    if (!m) return json(404, { message: 'Not Found' });
+    const path = decodeURIComponent(m[1]);
+    if (req.method() === 'GET') {
+      const f = files.get(path);
+      if (f) {
+        if ((h['accept'] ?? '').includes('raw')) return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/octet-stream' }, body: f.body });
+        const big = f.body.length > 1024 * 1024;
+        return json(200, { type: 'file', path, sha: f.sha, encoding: big ? 'none' : 'base64', content: big ? '' : f.body.toString('base64').replace(/(.{60})/g, '$1\n') });
       }
-      if (u.searchParams.get('uploadType') !== 'multipart') return route.fulfill({ status: 400, headers: cors, body: 'uploadType' });
-      const parts = parseMultipart(req.postDataBuffer(), req.headers()['content-type']);
-      const meta = JSON.parse(parts[0].body.toString('utf8'));
-      const typeMatch = parts[1].head.match(/Content-Type:\s*(\S+)/i);
-      const nid = randomUUID();
-      drive.set(nid, { name: meta.name, body: parts[1].body, type: typeMatch?.[1] ?? 'application/octet-stream' });
-      return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ id: nid, name: meta.name }) });
+      const inDir = [...files.entries()].filter(([p]) => p.startsWith(path + '/'));
+      if (inDir.length) return json(200, inDir.map(([p, f]) => ({ type: 'file', path: p, sha: f.sha })));
+      return json(404, { message: 'Not Found' });
     }
-    if (req.method() === 'PATCH' && id) {
-      const f = drive.get(id);
-      f.body = req.postDataBuffer();
-      return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ id, name: f.name }) });
+    const body = JSON.parse(req.postData() ?? '{}');
+    const existing = files.get(path);
+    if (req.method() === 'PUT') {
+      if (path === 'kochbuch.json' && forceConflict > 0) {
+        forceConflict--;
+        return json(409, { message: 'is at abc but expected def' });
+      }
+      if (existing && !body.sha) return json(422, { message: '"sha" wasn\'t supplied.' });
+      if (existing && body.sha !== existing.sha) return json(409, { message: 'conflict' });
+      if (!existing && body.sha) return json(409, { message: 'conflict' });
+      const sha = `sha${++shaCounter}`;
+      files.set(path, { sha, body: Buffer.from(body.content, 'base64') });
+      commits.push(`${body.message}: ${path}`);
+      return json(existing ? 200 : 201, { content: { path, sha } });
     }
-    if (req.method() === 'DELETE' && id) {
-      drive.delete(id);
-      return route.fulfill({ status: 204, headers: cors, body: '' });
+    if (req.method() === 'DELETE') {
+      if (!existing || existing.sha !== body.sha) return json(409, { message: 'conflict' });
+      files.delete(path);
+      return json(200, {});
     }
-    return route.fulfill({ status: 400, headers: cors, body: 'unbekannt' });
+    return json(400, { message: 'unbekannt' });
   });
-  await ctx.addInitScript(() => localStorage.setItem('kochbuch-google-client-id', JSON.stringify('test.apps.googleusercontent.com')));
 }
 
 const browser = await chromium.launch();
 async function phone(name) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  await mockGoogle(ctx);
+  await mockGitHub(ctx);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(`${name}: ${e.message}`));
@@ -116,22 +106,40 @@ const titles = (p) =>
   );
 async function syncButton(p) {
   await p.goto(`${BASE}#/mehr`);
-  await p.getByRole('button', { name: /Jetzt synchronisieren/ }).click();
-  await p.waitForFunction(() => /Zuletzt synchronisiert|fehlgeschlagen/.test(document.querySelector('.sync-state')?.textContent ?? ''), null, { timeout: 15000 });
+  await p.getByRole('button', { name: /Jetzt abgleichen/ }).click();
+  await p.waitForTimeout(200);
+  await p.waitForFunction(() => /Zuletzt abgeglichen|fehlgeschlagen|ungültig/.test(document.querySelector('.sync-state')?.textContent ?? ''), null, { timeout: 15000 });
   return p.locator('.sync-state').textContent();
 }
 
-// 1) Handy A verbindet sich
+async function connect(p, token = 'github_pat_TESTTOKEN_1234567890') {
+  await p.goto(`${BASE}#/mehr`);
+  await p.locator('input[placeholder="benutzer/kochbuch-daten"]').fill('familie/kochbuch-daten');
+  await p.locator('input[placeholder="github_pat_…"]').fill(token);
+  await p.getByRole('button', { name: /Verbinden/ }).click();
+}
+
+// 0) Schutz: öffentliches Repository und falscher Token werden abgelehnt
 const A = await phone('A');
-await A.getByRole('button', { name: /Mit Google Drive verbinden/ }).click();
-await A.waitForFunction(() => /Zuletzt synchronisiert/.test(document.querySelector('.sync-state')?.textContent ?? ''), null, { timeout: 15000 });
-check('A: Anmeldung (Weiterleitung) und erste Synchronisation', true);
-check('Drive enthält den Datenstand', [...drive.values()].some((f) => f.name === 'kochbuch-sync.json'));
+repoPrivate = false;
+await connect(A);
+await A.waitForSelector('.sync-setup .sync-state.is-error');
+check('Öffentliches Repository wird abgelehnt', (await A.locator('.sync-setup .sync-state').textContent()).includes('öffentlich'));
+repoPrivate = true;
+await connect(A, 'github_pat_FALSCH_123456789012345');
+await A.waitForFunction(() => /ungültig/.test(document.querySelector('.sync-setup .sync-state')?.textContent ?? ''), null, { timeout: 10000 });
+check('Falscher Token wird abgelehnt', true);
+
+// 1) Handy A verbindet sich
+await connect(A);
+await A.waitForFunction(() => /Zuletzt abgeglichen/.test(document.querySelector('.sync-state')?.textContent ?? ''), null, { timeout: 15000 });
+check('A: verbunden und erster Abgleich', files.has('kochbuch.json'));
+check('Token wird nicht angezeigt', !(await A.content()).includes('TESTTOKEN'));
 
 // 2) Handy B (eigene Beispielrezepte) verbindet sich → keine Duplikate
 const B = await phone('B');
-await B.getByRole('button', { name: /Mit Google Drive verbinden/ }).click();
-await B.waitForFunction(() => /Zuletzt synchronisiert/.test(document.querySelector('.sync-state')?.textContent ?? ''), null, { timeout: 15000 });
+await connect(B);
+await B.waitForFunction(() => /Zuletzt abgeglichen/.test(document.querySelector('.sync-state')?.textContent ?? ''), null, { timeout: 15000 });
 const tB = await titles(B);
 check('B: Beispielrezepte nicht doppelt', tB.length === 8, `${tB.length} Rezepte`);
 
@@ -146,8 +154,8 @@ await A.waitForSelector('.photo-field img');
 await A.getByRole('button', { name: /^Verwerfen$|Speichern/ }).last().click();
 await A.waitForSelector('.recipe-title');
 await syncButton(A);
-const imgFiles = [...drive.values()].filter((f) => f.name.startsWith('img-')).length;
-check('Foto wurde nach Drive hochgeladen', imgFiles === 1, `${imgFiles} Bilddatei(en)`);
+const imgFiles = [...files.keys()].filter((p) => p.startsWith('bilder/')).length;
+check('Foto wurde ins Repository hochgeladen', imgFiles === 1, `${imgFiles} Bilddatei(en)`);
 const stB = await syncButton(B);
 check('B: neues Rezept angekommen', (await titles(B)).includes('Testrezept Sync'), stB);
 await B.goto(`${BASE}#/rezepte`);
@@ -194,22 +202,50 @@ const catsA = await A.evaluate(
 );
 check('Automatisch: neue Kategorie von B ist auf A', catsA.includes('Suppen'), catsA.join(', '));
 
-// 7) Abgelaufene Anmeldung → Hinweis statt Fehler
-await A.evaluate(() => localStorage.removeItem('kochbuch-google-token'));
-await A.evaluate(() => localStorage.setItem('kochbuch-sync', JSON.stringify({ ...JSON.parse(localStorage.getItem('kochbuch-sync')), lastSilentLogin: Date.now() })));
-await A.goto(`${BASE}#/mehr`);
-await A.reload();
-await A.waitForSelector('.sync-state');
-check('Abgelaufene Anmeldung wird erklärt', /abgelaufen/.test(await A.locator('.sync-state').textContent()));
-await A.evaluate(() => localStorage.setItem('kochbuch-sync', JSON.stringify({ ...JSON.parse(localStorage.getItem('kochbuch-sync')), lastSilentLogin: 0 })));
-await A.reload(); // stille Neu-Anmeldung beim Start
-await A.waitForTimeout(2500);
-await A.goto(`${BASE}#/mehr`);
-await A.waitForSelector('.sync-state');
-check('Stille Neu-Anmeldung beim App-Start', /Zuletzt synchronisiert/.test(await A.locator('.sync-state').textContent()), await A.locator('.sync-state').textContent());
+// 7) Einkaufsliste: A setzt etwas drauf, B hakt ab, A löscht einen Eintrag
+const shop = (p) =>
+  p.evaluate(
+    () =>
+      new Promise((res) => {
+        const r = indexedDB.open('kochbuch');
+        r.onsuccess = () => {
+          const g = r.result.transaction('shopping').objectStore('shopping').getAll();
+          g.onsuccess = () => res(g.result.map((x) => `${x.name}${x.checked ? '✓' : ''}`).sort());
+        };
+      }),
+  );
+for (const t of ['2 Zitronen', '1 l Milch', 'Brot']) {
+  await A.goto(`${BASE}#/einkauf`);
+  await A.locator('.shop-add input').fill(t);
+  await A.locator('.shop-add input').press('Enter');
+  await A.waitForTimeout(150);
+}
+await syncButton(A);
+await syncButton(B);
+check('B: Einkaufsliste von A angekommen', (await shop(B)).join(',') === 'Brot,Milch,Zitronen', (await shop(B)).join(','));
+await B.goto(`${BASE}#/einkauf`);
+await B.locator('.shop-item', { hasText: 'Milch' }).locator('.shop-check').click();
+await B.waitForTimeout(200);
+await A.goto(`${BASE}#/einkauf`);
+await A.locator('.shop-item', { hasText: 'Brot' }).getByRole('button', { name: /löschen/ }).click();
+await A.waitForTimeout(200);
+await syncButton(B);
+// Gleichzeitig: A speichert, während B gerade geschrieben hat → Konflikt, A führt neu zusammen
+forceConflict = 1;
+await syncButton(A);
+await syncButton(B);
+check('Abhaken (B) und Löschen (A) beide übernommen – trotz Konflikt', (await shop(A)).join(',') === 'Milch✓,Zitronen' && (await shop(B)).join(',') === 'Milch✓,Zitronen', `A: ${(await shop(A)).join(',')} | B: ${(await shop(B)).join(',')}`);
+
+// 8) Automatischer Abgleich auf der Einkaufsliste (alle 30 s, ohne Knopf)
+await B.goto(`${BASE}#/einkauf`);
+await A.goto(`${BASE}#/einkauf`);
+await A.locator('.shop-add input').fill('Butter');
+await A.locator('.shop-add input').press('Enter');
+await B.waitForFunction(() => document.body.textContent.includes('Butter'), null, { timeout: 45000 }).catch(() => {});
+check('B sieht „Butter“ automatisch (innerhalb von ~30 s)', (await shop(B)).includes('Butter'));
 
 check('Keine JS-Fehler', !A.errors.length && !B.errors.length, [...A.errors, ...B.errors].join('; '));
-console.log(`(${requests} Anfragen an das nachgebildete Google Drive)`);
+console.log(`(${requests} Anfragen, ${commits.length} Commits im nachgebildeten GitHub)`);
 await browser.close();
 console.log(failed ? `\n${failed} Prüfung(en) fehlgeschlagen` : '\nAlle Prüfungen bestanden');
 process.exit(failed ? 1 : 0);

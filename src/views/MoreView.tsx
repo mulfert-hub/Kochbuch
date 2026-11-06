@@ -1,14 +1,13 @@
 // Backup (Export/Import), Beispieldaten, OCR offline bereitstellen, Speicherinfo.
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, tombstoneRecipes } from '../db/db';
+import { addTombstones, db, tombstoneRecipes } from '../db/db';
 import { downloadBackup, restoreBackup } from '../db/backup';
 import { seedSampleRecipes } from '../db/seed';
 import { Icon } from '../components/Icon';
 import { getTheme, setTheme, type ThemeChoice } from '../theme';
 import { APP_BUILD_TIME, APP_VERSION, checkForUpdate } from '../update';
-import { disableSync, enableSync, syncNow, useSyncStatus } from '../sync/sync';
-import { getClientId, redirectUri, setClientId } from '../sync/googleAuth';
+import { connect, disconnect, syncNow, useSyncStatus } from '../sync/sync';
 import { CLAUDE_MODELS, getApiKey, getModel, setApiKey, setModel, testApiKey, type ClaudeModel } from '../ai/claudeRecipe';
 import { choiceDialog, confirmDialog, toast } from '../components/ui';
 
@@ -105,61 +104,32 @@ function ClaudeCard() {
 
 function SyncCard() {
   const st = useSyncStatus();
-  const [clientId, setClientIdState] = useState(getClientId());
-  const [showSetup, setShowSetup] = useState(false);
+  const [repo, setRepo] = useState(st.repo);
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const last = st.lastSync ? new Date(st.lastSync).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : null;
   return (
     <section className="more-card card">
       <h2>Synchronisation</h2>
       <p>
-        Rezepte, Kategorien und Fotos über euer gemeinsames Google Drive abgleichen. Die App speichert in einem versteckten App-Ordner und sieht
-        nichts anderes in eurem Drive. Die Einkaufsliste bleibt auf jedem Handy getrennt.
+        Rezepte, Kategorien, Fotos und die Einkaufsliste über ein <strong>privates</strong> GitHub-Repository zwischen euren Handys abgleichen. Einrichtung
+        siehe README.
       </p>
-      {!st.configured && !showSetup ? (
-        <>
-          <p className="sync-state">Noch nicht eingerichtet.</p>
-          <div className="more-actions">
-            <button className="btn btn-ghost" onClick={() => setShowSetup(true)}>
-              Einrichten
-            </button>
-          </div>
-        </>
-      ) : showSetup ? (
-        <div className="sync-setup">
-          <label className="field">
-            <span>Google-Client-ID</span>
-            <input className="input mono" placeholder="…apps.googleusercontent.com" value={clientId} onChange={(e) => setClientIdState(e.target.value)} />
-          </label>
-          <p className="hint">
-            Einmalig in der Google Cloud Console anlegen (siehe Anleitung in der README). Als Weiterleitungs-URI eintragen: <code>{redirectUri()}</code>
-          </p>
-          <div className="more-actions">
-            <button
-              className="btn btn-primary"
-              disabled={!/\.apps\.googleusercontent\.com$/.test(clientId.trim())}
-              onClick={() => {
-                setClientId(clientId);
-                setShowSetup(false);
-                toast('Client-ID gespeichert');
-              }}
-            >
-              Speichern
-            </button>
-          </div>
-        </div>
-      ) : st.enabled ? (
+      {st.enabled ? (
         <>
           <p className={`sync-state${st.error ? ' is-error' : ''}`}>
-            {st.running ? 'Synchronisiere …' : st.message ?? (last ? `Zuletzt synchronisiert: ${last}` : 'Noch nicht synchronisiert.')}
+            {st.running ? 'Gleiche ab …' : st.message ?? (last ? `Zuletzt abgeglichen: ${last}` : 'Noch nicht abgeglichen.')}
           </p>
+          <p className="hint">Repository: {st.repo}</p>
           <div className="more-actions">
-            <button className="btn btn-primary" disabled={st.running} onClick={() => syncNow(true)}>
-              <Icon name="refresh" /> Jetzt synchronisieren
+            <button className="btn btn-primary" disabled={st.running} onClick={() => syncNow()}>
+              <Icon name="refresh" /> Jetzt abgleichen
             </button>
             <button
               className="btn btn-ghost"
               onClick={async () => {
-                if (await confirmDialog({ title: 'Synchronisation ausschalten?', text: 'Die Rezepte bleiben auf diesem Handy und in Google Drive erhalten.', confirm: 'Ausschalten' })) disableSync();
+                if (await confirmDialog({ title: 'Synchronisation ausschalten?', text: 'Die Rezepte bleiben auf diesem Handy und im Repository erhalten. Der Token wird von diesem Handy gelöscht.', confirm: 'Ausschalten' })) disconnect();
               }}
             >
               Ausschalten
@@ -167,17 +137,38 @@ function SyncCard() {
           </div>
         </>
       ) : (
-        <>
-          {st.message && <p className="sync-state is-error">{st.message}</p>}
+        <div className="sync-setup">
+          <label className="field">
+            <span>Daten-Repository</span>
+            <input className="input mono" placeholder="benutzer/kochbuch-daten" autoCapitalize="off" autoCorrect="off" value={repo} onChange={(e) => setRepo(e.target.value)} />
+          </label>
+          <label className="field">
+            <span>GitHub-Token</span>
+            <input className="input mono" type="password" autoComplete="off" placeholder="github_pat_…" value={token} onChange={(e) => setToken(e.target.value)} />
+          </label>
+          {error && <p className="sync-state is-error">{error}</p>}
           <div className="more-actions">
-            <button className="btn btn-primary" onClick={() => enableSync()}>
-              <Icon name="refresh" /> Mit Google Drive verbinden
-            </button>
-            <button className="btn btn-ghost" onClick={() => setShowSetup(true)}>
-              Client-ID ändern
+            <button
+              className="btn btn-primary"
+              disabled={busy || !repo.trim() || token.trim().length < 20}
+              onClick={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  await connect(repo, token);
+                  setToken('');
+                  toast('Synchronisation eingerichtet');
+                } catch (e) {
+                  setError((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Icon name="refresh" /> {busy ? 'Prüfe …' : 'Verbinden'}
             </button>
           </div>
-        </>
+        </div>
       )}
     </section>
   );
@@ -350,6 +341,7 @@ export function MoreView() {
               if (!ok) return;
               await db.transaction('rw', db.recipes, db.images, db.shopping, db.tombstones, async () => {
                 await tombstoneRecipes(await db.recipes.toArray());
+                await addTombstones('shopping', (await db.shopping.toCollection().primaryKeys()) as string[]);
                 await Promise.all([db.recipes.clear(), db.images.clear(), db.shopping.clear()]);
               });
               toast('Alle Rezepte gelöscht');

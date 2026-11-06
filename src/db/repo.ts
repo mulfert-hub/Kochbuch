@@ -165,6 +165,18 @@ export async function addToShopping(recipe: Recipe, servings: number | null): Pr
   return recipe.ingredients.length;
 }
 
+/** Einträge löschen (mit Löschvermerk, damit sie beim Abgleich nicht zurückkommen) */
+export async function deleteShopping(ids: string[]): Promise<void> {
+  await db.transaction('rw', db.shopping, db.tombstones, async () => {
+    await db.shopping.bulkDelete(ids);
+    await addTombstones('shopping', ids);
+  });
+}
+
+export async function clearShopping(): Promise<void> {
+  await deleteShopping((await db.shopping.toCollection().primaryKeys()) as string[]);
+}
+
 export async function toggleShopping(item: ShoppingItem): Promise<void> {
   await db.shopping.update(item.id, { checked: !item.checked });
 }

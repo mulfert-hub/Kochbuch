@@ -54,3 +54,17 @@ describe('Synchronisation: Zusammenführen', () => {
     expect(ab.recipes.map((r) => r.title)).toEqual(['Suppe neu']);
   });
 });
+
+describe('Synchronisation: Einkaufsliste', () => {
+  const item = (id: string, name: string, updatedAt: number, checked = false) => ({ id, name, unit: '', quantity: 1, checked, sources: [], order: 1, updatedAt });
+  it('abhaken auf einem Handy, neuer Eintrag auf dem anderen – beides bleibt', () => {
+    const A = snap({ shopping: [item('milch', 'Milch', 5, true)] });
+    const B = snap({ shopping: [item('milch', 'Milch', 1), item('brot', 'Brot', 6)] });
+    const m = mergeSnapshots(A, B);
+    expect(m.shopping!.map((i) => [i.name, i.checked])).toEqual([['Brot', false], ['Milch', true]]);
+  });
+  it('gelöschte Einträge kommen nicht zurück', () => {
+    const m = mergeSnapshots(snap({ tombstones: [{ id: 'milch', kind: 'shopping', deletedAt: 9 }] }), snap({ shopping: [item('milch', 'Milch', 3)] }));
+    expect(m.shopping).toEqual([]);
+  });
+});

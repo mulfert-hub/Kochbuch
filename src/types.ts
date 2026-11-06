@@ -72,6 +72,8 @@ export interface ShoppingItem {
   checked: boolean;
   sources: ShoppingSource[];
   order: number;
+  /** Änderungszeitpunkt für die Synchronisation */
+  updatedAt?: number;
 }
 
 /** Entwurf nach dem OCR, noch nicht gespeichert. */

@@ -1,6 +1,6 @@
 # Kochbuch
 
-Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, **Claude** (Anthropic) liest sie aus, und daraus wird ein durchblätterbares Kochbuch. Kein eigener Server, kein Tracking. Die Rezepte liegen im Browser-Speicher des Handys (IndexedDB), auf Wunsch zusätzlich in eurem Google Drive.
+Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, **Claude** (Anthropic) liest sie aus, und daraus wird ein durchblätterbares Kochbuch. Kein eigener Server, kein Tracking. Die Rezepte liegen im Browser-Speicher des Handys (IndexedDB), auf Wunsch zusätzlich in eurem privaten GitHub-Repository (Synchronisation zwischen mehreren Handys).
 
 <p>
   <img src="docs/buch-titel.png" width="200" alt="Titelseite mit Inhaltsverzeichnis">
@@ -20,7 +20,7 @@ Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, **
 - **Portionen umrechnen** mit +/–. Brüche bei EL, TL und Stück („1½“, „¾“), Dezimalzahlen mit Komma und sinnvoller Rundung bei g und ml („190 g“ statt „187,5 g“), Plural („1 Zehe“ → „2 Zehen“).
 - **Einkaufsliste**: aus einem oder mehreren Rezepten (Rezeptliste → „Auswählen“). Gleiche Zutaten werden zusammengefasst und Einheiten umgerechnet (500 g + 1 kg = 1,5 kg). Abhaken, löschen, leeren, eigene Einträge.
 - **Foto vom Gericht**: per Kamera oder aus der Mediathek, oder ein **Beispielfoto** aus freien Bilddatenbanken (Openverse) mit automatischem Bildnachweis.
-- **Synchronisation** über ein gemeinsames Google-Konto (versteckter App-Ordner in Google Drive): Rezepte, Kategorien und Fotos auf mehreren Handys gleich halten. Einrichtung siehe unten.
+- **Synchronisation** über ein privates GitHub-Repository: Rezepte, Kategorien, Fotos und die **Einkaufsliste** auf mehreren Handys gleich halten. Einrichtung siehe unten.
 - **Backup**: Export und Import aller Daten inklusive Bilder als eine JSON-Datei, zusammenführen oder ersetzen.
 - **Offline** nach dem ersten Laden (Lesen, Blättern, Einkaufsliste, Bearbeiten; nur das Einlesen neuer Rezepte braucht Internet), installierbar auf dem Homescreen, Dark Mode passend zum System.
 
@@ -43,7 +43,7 @@ Weitere Befehle:
 | `npm run preview` | gebauten Stand lokal ausliefern (auch im WLAN) |
 | `npm test` | Unit-Tests (Mengen, Zutaten-Parser, Rezept-Heuristik, Einkaufsliste, Seiten zusammenfügen, Spaltenerkennung) |
 | `npm run test:claude` | Claude-Erkennung mit nachgebildeter Anthropic-API: Anfrage, Übernahme, Fehlerfälle (nach `build`) |
-| `npm run test:sync` | Synchronisationstest mit zwei „Handys“ und nachgebildetem Google Drive (nach `build`) |
+| `npm run test:sync` | Synchronisationstest mit zwei „Handys“ und nachgebildetem GitHub (nach `build`) |
 | `npm run test:app` | Funktionstest im Browser: Blättern, Portionen, Einkaufsliste, Suche, Backup, Offline (nach `build`) |
 
 Die Browser-Tests nutzen Playwright mit Chromium. Falls das nicht installiert ist: `npm i -D playwright && npx playwright install chromium`.
@@ -91,31 +91,27 @@ Die Adresse auf dem Handy (im selben WLAN) öffnen. Über `http://192.168…` fu
 
 **Kosten:** mit „Genau“ (Claude Opus 5.5) grob 3–6 Cent pro Rezept, je nach Bildgröße und Anzahl der Screenshots; mit „Günstig“ (Claude Haiku 5.5) unter 1 Cent. **Datenschutz:** Die Bilder werden zur Erkennung an Anthropic geschickt. Der Schlüssel liegt nur im Speicher des Handys.
 
-## Synchronisation über Google Drive einrichten
+## Synchronisation über GitHub einrichten
 
-Einmalig, etwa 10 Minuten, am besten am Computer. Alles mit dem **gemeinsamen Google-Konto** erledigen.
+Einmalig, etwa 5 Minuten. Geht am Handy, bequemer am Computer.
 
-1. [console.cloud.google.com](https://console.cloud.google.com) öffnen und mit dem gemeinsamen Konto anmelden.
-2. Oben auf die Projektauswahl tippen → **„Neues Projekt“** → Name „Kochbuch“ → **Erstellen**. Danach sicherstellen, dass oben „Kochbuch“ ausgewählt ist.
-3. Menü ☰ → **„APIs und Dienste“ → „Bibliothek“** → nach **„Google Drive API“** suchen → **Aktivieren**.
-4. Menü ☰ → **„Google Auth Platform“** (bzw. „APIs und Dienste → OAuth-Zustimmungsbildschirm“) → **„Jetzt starten“**:
-   - App-Name: „Kochbuch“, Nutzersupport-E-Mail: euer Konto
-   - Zielgruppe: **Extern**
-   - Kontaktdaten: euer Konto → Zustimmen → **Erstellen**
-5. Links **„Zielgruppe“** → bei „Testnutzer“ **„Nutzer hinzufügen“** → die E-Mail-Adresse des gemeinsamen Kontos eintragen → Speichern. Der Status „Testen“ kann so bleiben.
-6. Links **„Clients“** → **„Client erstellen“**:
-   - Anwendungstyp: **Webanwendung**, Name: „Kochbuch-App“
-   - Autorisierte JavaScript-Quellen: `https://mulfert-hub.github.io`
-   - Autorisierte Weiterleitungs-URIs: `https://mulfert-hub.github.io/Kochbuch/` (genau so, mit Schrägstrich am Ende)
-   - **Erstellen** → die **Client-ID** kopieren (endet auf `.apps.googleusercontent.com`). Ein Client-Schlüssel („secret“) wird nicht gebraucht.
-7. Client-ID in die App bringen, eine von zwei Möglichkeiten:
-   - in der App unter **Mehr → Synchronisation** eintragen (auf jedem Handy), oder
-   - einmalig im Repository unter **Settings → Secrets and variables → Actions → Variables** als `GOOGLE_CLIENT_ID` anlegen. Dann ist sie nach der nächsten Veröffentlichung auf allen Handys schon eingetragen.
-8. Auf jedem Handy: **Mehr → Synchronisation → „Mit Google Drive verbinden“** → mit dem gemeinsamen Konto anmelden. Hinweis „Google hat diese App nicht überprüft“ → **„Weiter“** (es ist eure eigene App).
+**1. Privates Daten-Repository anlegen**
+1. Auf [github.com/new](https://github.com/new) gehen.
+2. Name: `kochbuch-daten`, Sichtbarkeit: **Private**. Sonst nichts ankreuzen → **Create repository**.
 
-**So funktioniert es:** Die App speichert in einem versteckten App-Ordner in Google Drive (im Drive nicht sichtbar, die App sieht auch nichts anderes). Synchronisiert wird beim Öffnen der App und wenige Sekunden nach jeder Änderung. Pro Rezept gewinnt die neuere Änderung, gelöschte Rezepte bleiben gelöscht, gleiche Kategorien und doppelte Beispielrezepte werden zusammengelegt. Die Einkaufsliste bleibt pro Handy getrennt. Ohne Internet arbeitet die App normal weiter und gleicht später ab.
+**2. Zugangsschlüssel (Token) erstellen, der nur dieses Repository darf**
+1. Auf [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new) gehen (Settings → Developer settings → Personal access tokens → **Fine-grained tokens** → Generate new token).
+2. Token name: „Kochbuch-App“. Expiration: am besten **1 Jahr** (danach einfach einen neuen erstellen).
+3. Repository access: **Only select repositories** → `kochbuch-daten` auswählen.
+4. Permissions → Repository permissions → **Contents: Read and write** (Metadata wird automatisch „Read-only“).
+5. **Generate token** → den Token kopieren (beginnt mit `github_pat_`). Er wird nur einmal angezeigt.
 
-**Datenschutz:** Mit eingeschalteter Synchronisation liegen Rezepte und Fotos zusätzlich in eurem Google Drive. Unabhängig davon gehen eingelesene Bilder und Texte zur Erkennung an Anthropic (Claude) und bei Fotovorschlägen der Rezepttitel an Openverse.
+**3. Auf jedem Handy eintragen**
+**Mehr → Synchronisation** → Daten-Repository `benutzername/kochbuch-daten` und den Token eintragen → **Verbinden**. Beide Handys nutzen denselben Token. Die App prüft, dass das Repository privat ist, und verweigert sonst die Synchronisation.
+
+**So funktioniert es:** Die Daten liegen als `kochbuch.json` im Repository, Fotos und Screenshots im Ordner `bilder/`. Abgeglichen wird beim Öffnen der App, wenige Sekunden nach jeder Änderung, auf der Einkaufsliste alle 30 Sekunden und sonst alle paar Minuten. Pro Rezept und pro Einkaufslisten-Eintrag gewinnt die neuere Änderung, Gelöschtes bleibt gelöscht, gleiche Kategorien und doppelte Beispielrezepte werden zusammengelegt. Speichern beide Handys gleichzeitig, erkennt GitHub das; die App führt dann neu zusammen, es geht nichts verloren. Ohne Internet arbeitet die App normal weiter und gleicht später ab.
+
+**Datenschutz:** Das Daten-Repository ist nur für euch sichtbar (und technisch für GitHub). Der Token liegt nur im Speicher der Handys und darf nur auf `kochbuch-daten` zugreifen. Jede Änderung ist ein Commit, gelöschte Fotos bleiben in der Versionsgeschichte erhalten. Unabhängig davon gehen eingelesene Bilder und Texte zur Erkennung an Anthropic (Claude) und bei Fotovorschlägen der Rezepttitel an Openverse.
 
 ## Technik
 
@@ -132,7 +128,7 @@ src/
   types.ts              Datenmodell
   db/                   Dexie-Schema, Repository-Funktionen, Beispieldaten, Backup
   ai/                   Rezepterkennung mit Claude
-  sync/                 Google-Anmeldung, Drive-Client, Synchronisation
+  sync/                 GitHub-Client, Synchronisation
   lib/                  reine Logik (getestet): Mengen, Einheiten, Zutaten-Parser,
                         Einkaufsliste, Suche, Fotosuche, Zusammenführen beim Sync
   ocr/                  Import-Ablauf, Share Target

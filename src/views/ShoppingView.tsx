@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { addManualShopping, toggleShopping } from '../db/repo';
+import { addManualShopping, clearShopping, deleteShopping, toggleShopping } from '../db/repo';
 import { displayItem } from '../lib/shopping';
 import { formatQuantity } from '../lib/quantity';
 import { unitLabel } from '../lib/units';
@@ -26,7 +26,7 @@ function Row({ item }: { item: ShoppingItem }) {
         </span>
         {amount && <span className="shop-amount">{amount}</span>}
       </button>
-      <button className="icon-btn sm" onClick={() => db.shopping.delete(item.id)} aria-label={`${item.name} löschen`}>
+      <button className="icon-btn sm" onClick={() => deleteShopping([item.id])} aria-label={`${item.name} löschen`}>
         <Icon name="close" />
       </button>
     </li>
@@ -51,7 +51,7 @@ export function ShoppingView() {
           <button
             className="btn btn-ghost"
             onClick={async () => {
-              if (await confirmDialog({ title: 'Liste leeren?', text: 'Alle Einträge werden entfernt.', confirm: 'Leeren', danger: true })) await db.shopping.clear();
+              if (await confirmDialog({ title: 'Liste leeren?', text: 'Alle Einträge werden entfernt.', confirm: 'Leeren', danger: true })) await clearShopping();
             }}
           >
             <Icon name="trash" /> Leeren
@@ -93,7 +93,7 @@ export function ShoppingView() {
             <>
               <div className="shop-done-head">
                 <span className="eyebrow">Im Korb</span>
-                <button className="btn btn-ghost" onClick={() => db.shopping.bulkDelete(done.map((d) => d.id))}>
+                <button className="btn btn-ghost" onClick={() => deleteShopping(done.map((d) => d.id))}>
                   Erledigte entfernen
                 </button>
               </div>
