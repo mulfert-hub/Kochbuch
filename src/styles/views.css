@@ -1876,11 +1876,3 @@
   min-height: 36px;
   padding: 0 2px;
 }
-
-.claude-models {
-  grid-template-columns: 1fr 1fr;
-}
-
-.claude-models button span {
-  font-size: 12px;
-}

@@ -227,7 +227,6 @@ export function ImportView({ shared }: { shared?: boolean }) {
       <div className="tips">
         <h2>Tipps für gute Erkennung</h2>
         <ul>
-          <li>Mit eigenem Claude-Schlüssel (Mehr → Rezepterkennung) werden auch schwierige Vorlagen zuverlässig gelesen.</li>
           <li>Screenshot in voller Auflösung, nicht gezoomt oder verkleinert.</li>
           <li>Lange Rezepte: mehrere Screenshots nacheinander auswählen und „Ein Rezept“ wählen. Überlappungen werden erkannt.</li>
           <li>Werbung, Fotos und Menüleisten mit „Zuschneiden“ entfernen.</li>
