@@ -20,6 +20,7 @@ Eine Progressive Web App für dein Handy: Screenshots von Rezepten hochladen, di
 - **Inhaltsverzeichnis** nach Kategorien. Kategorien anlegen, umbenennen, sortieren, löschen. Mehrere Kategorien pro Rezept möglich.
 - **Portionen umrechnen** mit +/–. Brüche bei EL, TL und Stück („1½“, „¾“), Dezimalzahlen mit Komma und sinnvoller Rundung bei g und ml („190 g“ statt „187,5 g“), Plural („1 Zehe“ → „2 Zehen“).
 - **Einkaufsliste**: aus einem oder mehreren Rezepten (Rezeptliste → „Auswählen“). Gleiche Zutaten werden zusammengefasst und Einheiten umgerechnet (500 g + 1 kg = 1,5 kg). Abhaken, löschen, leeren, eigene Einträge.
+- **Rezepterkennung mit Claude** (optional, eigener API-Schlüssel): Claude Opus 5.5 liest Screenshots und Fotos deutlich zuverlässiger als die Texterkennung auf dem Gerät, ergänzt fehlende Titel und schlägt eine Kategorie vor. Ohne Schlüssel arbeitet die App mit Tesseract.js lokal.
 - **Foto vom Gericht**: per Kamera oder aus der Mediathek, oder ein **Beispielfoto** aus freien Bilddatenbanken (Openverse) mit automatischem Bildnachweis.
 - **Synchronisation** über ein gemeinsames Google-Konto (versteckter App-Ordner in Google Drive): Rezepte, Kategorien und Fotos auf mehreren Handys gleich halten. Einrichtung siehe unten.
 - **Backup**: Export und Import aller Daten inklusive Bilder als eine JSON-Datei, zusammenführen oder ersetzen.
@@ -43,6 +44,7 @@ Weitere Befehle:
 | `npm run build` | Produktions-Build nach `dist/` (mit Service Worker) |
 | `npm run preview` | gebauten Stand lokal ausliefern (auch im WLAN) |
 | `npm test` | Unit-Tests (Mengen, Zutaten-Parser, Rezept-Heuristik, Einkaufsliste, Seiten zusammenfügen, Spaltenerkennung) |
+| `npm run test:claude` | Claude-Erkennung mit nachgebildeter Anthropic-API: Anfrage, Übernahme, Fehlerfälle (nach `build`) |
 | `npm run test:sync` | Synchronisationstest mit zwei „Handys“ und nachgebildetem Google Drive (nach `build`) |
 | `npm run test:app` | Funktionstest im Browser: Blättern, Portionen, Einkaufsliste, Suche, Backup, Offline (nach `build`) |
 | `npm run test:ocr` | OCR-Test mit Beispiel-Screenshots, siehe [docs/OCR-TEST.md](docs/OCR-TEST.md) (nach `build`) |
@@ -84,6 +86,14 @@ Die Adresse auf dem Handy (im selben WLAN) öffnen. Über `http://192.168…` fu
 - Die Daten liegen im Browser-Speicher des Geräts. **Mach regelmäßig ein Backup** (Mehr → Backup exportieren) und speichere die Datei z. B. in iCloud Drive oder Google Drive.
 - iOS kann Speicher von Webseiten, die lange nicht geöffnet wurden, löschen. Als **installierte App** auf dem Homescreen ist das deutlich unwahrscheinlicher. Die App bittet dann um „dauerhaften Speicher“ (Status unter Mehr → Speicher).
 - Wichtig: Safari und die Homescreen-App haben auf dem iPhone **getrennte Speicher**. Nutze die App immer über das Homescreen-Symbol.
+
+## Rezepterkennung mit Claude einrichten
+
+1. Auf [console.anthropic.com](https://console.anthropic.com) ein Konto anlegen, unter **Billing** Guthaben aufladen (z. B. 5 €) und unter **Limits** ein monatliches Ausgabenlimit setzen.
+2. Unter **API Keys** einen Schlüssel erstellen (beginnt mit `sk-ant-`).
+3. In der App: **Mehr → Rezepterkennung mit Claude** → Schlüssel einfügen → Speichern. Auf jedem Handy einzeln, der Schlüssel wird nicht synchronisiert.
+
+**Kosten:** mit „Genau“ (Claude Opus 5.5) grob 3–6 Cent pro Rezept, je nach Bildgröße und Anzahl der Screenshots; mit „Günstig“ (Claude Haiku 5.5) unter 1 Cent. **Datenschutz:** Die Bilder werden zur Erkennung an Anthropic geschickt. Der Schlüssel liegt nur im Speicher des Handys.
 
 ## Synchronisation über Google Drive einrichten
 

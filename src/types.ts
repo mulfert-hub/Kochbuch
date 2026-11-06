@@ -90,6 +90,8 @@ export interface RecipeDraft {
   photoCredit?: PhotoCredit | null;
   /** Titel wurde aus den Zutaten abgeleitet (kein Name im Screenshot erkennbar) */
   titleDerived?: boolean;
+  /** Wer das Rezept erkannt hat: Claude oder die lokale Texterkennung */
+  source?: 'claude' | 'ocr';
   /** Wie sicher die Heuristik ist (0–1) – nur zur Anzeige. */
   confidence?: number;
 }

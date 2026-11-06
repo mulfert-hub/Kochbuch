@@ -79,7 +79,8 @@ export function ReviewView() {
               Prüfen{total > 1 ? ` · Rezept ${st.current + 1} von ${total}` : ''}
             </div>
             <h1 className="page-title">Stimmt alles?</h1>
-            {conf != null && entry.draft.ocrText && (
+            {entry.draft.source === 'claude' && <p className="confidence good">Von Claude erkannt. Bitte kurz Mengen und Schritte prüfen.</p>}
+            {entry.draft.source !== 'claude' && conf != null && entry.draft.ocrText && (
               <p className={`confidence ${conf > 0.75 ? 'good' : conf > 0.45 ? 'ok' : 'low'}`}>
                 {conf > 0.75
                   ? 'Gut erkannt. Bitte trotzdem kurz Mengen prüfen.'

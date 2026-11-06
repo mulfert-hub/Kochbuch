@@ -9,11 +9,98 @@ import { getTheme, setTheme, type ThemeChoice } from '../theme';
 import { APP_BUILD_TIME, APP_VERSION, checkForUpdate } from '../update';
 import { disableSync, enableSync, syncNow, useSyncStatus } from '../sync/sync';
 import { getClientId, redirectUri, setClientId } from '../sync/googleAuth';
+import { CLAUDE_MODELS, getApiKey, getModel, setApiKey, setModel, testApiKey, type ClaudeModel } from '../ai/claudeRecipe';
 import { choiceDialog, confirmDialog, toast } from '../components/ui';
 
 function fmtBytes(n: number) {
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
   return `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
+function ClaudeCard() {
+  const [key, setKey] = useState(getApiKey());
+  const [saved, setSaved] = useState(!!getApiKey());
+  const [model, setModelState] = useState<ClaudeModel>(getModel());
+  const [busy, setBusy] = useState(false);
+  return (
+    <section className="more-card card">
+      <h2>Rezepterkennung mit Claude</h2>
+      <p>
+        Mit eurem eigenen API-Schlüssel von Anthropic liest Claude die Screenshots – deutlich genauer als die Texterkennung auf dem Gerät. Die Bilder
+        werden dafür an Anthropic geschickt. Der Schlüssel bleibt auf diesem Handy und wird nicht synchronisiert.
+      </p>
+      {saved ? (
+        <>
+          <p className="sync-state">Aktiv. Screenshots werden von Claude gelesen (dafür ist Internet nötig).</p>
+          <div className="segmented theme-switch claude-models" role="radiogroup" aria-label="Modell">
+            {CLAUDE_MODELS.map((m) => (
+              <button
+                key={m.id}
+                role="radio"
+                aria-checked={model === m.id}
+                onClick={() => {
+                  setModel(m.id);
+                  setModelState(m.id);
+                }}
+              >
+                <strong>{m.label}</strong>
+                <span>{m.hint}</span>
+              </button>
+            ))}
+          </div>
+          <div className="more-actions">
+            <button
+              className="btn btn-ghost"
+              onClick={async () => {
+                if (await confirmDialog({ title: 'Schlüssel entfernen?', text: 'Danach liest die App Screenshots wieder mit der einfacheren Texterkennung auf dem Gerät.', confirm: 'Entfernen' })) {
+                  setApiKey('');
+                  setKey('');
+                  setSaved(false);
+                }
+              }}
+            >
+              Schlüssel entfernen
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="sync-setup">
+          <label className="field">
+            <span>Anthropic-API-Schlüssel</span>
+            <input
+              className="input mono"
+              type="password"
+              autoComplete="off"
+              placeholder="sk-ant-…"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+            />
+          </label>
+          <p className="hint">
+            Erstellen unter console.anthropic.com → API Keys. Dort am besten ein monatliches Ausgabenlimit setzen.
+          </p>
+          <div className="more-actions">
+            <button
+              className="btn btn-primary"
+              disabled={busy || !key.trim().startsWith('sk-ant-')}
+              onClick={async () => {
+                setBusy(true);
+                const r = await testApiKey(key.trim());
+                setBusy(false);
+                if (r === 'invalid') return toast('Der Schlüssel wurde von Anthropic abgelehnt');
+                if (r === 'error') toast('Konnte den Schlüssel nicht prüfen – er wird trotzdem gespeichert');
+                setApiKey(key);
+                setSaved(true);
+                if (r === 'ok') toast('Schlüssel gespeichert – Claude ist bereit');
+              }}
+            >
+              {busy ? 'Prüfe …' : 'Speichern'}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function SyncCard() {
@@ -178,6 +265,8 @@ export function MoreView() {
           ))}
         </div>
       </section>
+
+      <ClaudeCard />
 
       <SyncCard />
 
