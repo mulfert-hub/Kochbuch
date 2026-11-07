@@ -1,6 +1,6 @@
 // Export/Import aller Daten als eine JSON-Datei (Bilder als Base64-Data-URLs).
 import { addTombstones, db } from './db';
-import type { Category, Recipe, ShoppingItem, StoredImage } from '../types';
+import type { Category, PlanEntry, Recipe, ShoppingItem, StoredImage } from '../types';
 
 const FORMAT = 'kochbuch-backup';
 const VERSION = 1;
@@ -21,6 +21,8 @@ export interface BackupFile {
   categories: Category[];
   images: BackupImage[];
   shopping: ShoppingItem[];
+  /** Wochenplan (ältere Backups: fehlt) */
+  plan?: PlanEntry[];
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -38,11 +40,12 @@ async function dataUrlToBlob(url: string): Promise<Blob> {
 }
 
 export async function createBackup(): Promise<Blob> {
-  const [recipes, categories, images, shopping] = await Promise.all([
+  const [recipes, categories, images, shopping, plan] = await Promise.all([
     db.recipes.toArray(),
     db.categories.toArray(),
     db.images.toArray(),
     db.shopping.toArray(),
+    db.plan.toArray(),
   ]);
   const imgs: BackupImage[] = [];
   for (const i of images) {
@@ -56,6 +59,7 @@ export async function createBackup(): Promise<Blob> {
     categories,
     images: imgs,
     shopping,
+    plan,
   };
   return new Blob([JSON.stringify(file)], { type: 'application/json' });
 }
@@ -124,7 +128,7 @@ export async function restoreBackup(file: File, mode: 'merge' | 'replace'): Prom
     }
   }
 
-  await db.transaction('rw', [db.recipes, db.categories, db.images, db.shopping, db.tombstones], async () => {
+  await db.transaction('rw', [db.recipes, db.categories, db.images, db.shopping, db.tombstones, db.plan], async () => {
     if (mode === 'replace') {
       const keep = new Set(data.recipes.map((r) => r.id));
       const keepCats = new Set((data.categories ?? []).map((c) => c.id));
@@ -133,7 +137,7 @@ export async function restoreBackup(file: File, mode: 'merge' | 'replace'): Prom
       await addTombstones('recipe', ids.filter((id) => !keep.has(id)));
       await addTombstones('category', catIds.filter((id) => !keepCats.has(id)));
       await db.tombstones.bulkDelete([...keep, ...keepCats]);
-      await Promise.all([db.recipes.clear(), db.categories.clear(), db.images.clear(), db.shopping.clear()]);
+      await Promise.all([db.recipes.clear(), db.categories.clear(), db.images.clear(), db.shopping.clear(), db.plan.clear()]);
     }
     if (mode === 'merge') {
       // Kategorien mit gleichem Namen zusammenführen statt doppelt anlegen
@@ -152,6 +156,7 @@ export async function restoreBackup(file: File, mode: 'merge' | 'replace'): Prom
     await db.recipes.bulkPut(data.recipes);
     await db.images.bulkPut(images);
     if (data.shopping?.length) await db.shopping.bulkPut(data.shopping);
+    if (data.plan?.length) await db.plan.bulkPut(data.plan);
   });
 
   return { recipes: data.recipes.length, images: images.length, categories: data.categories?.length ?? 0, skipped };

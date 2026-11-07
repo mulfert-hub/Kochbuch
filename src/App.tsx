@@ -12,14 +12,17 @@ import { EditView } from './views/EditView';
 import { MoreView } from './views/MoreView';
 import { CookView } from './views/CookView';
 import { TodayView } from './views/TodayView';
+import { PlanView } from './views/PlanView';
 import { TimerBar } from './components/TimerBar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/db';
 import './styles/family.css';
 
-const NAV: { to: string; label: string; icon: IconName; match: string }[] = [
+const NAV: { to: string; label: string; icon: IconName; match: string; desktopOnly?: boolean }[] = [
   { to: '/buch', label: 'Buch', icon: 'book', match: 'buch' },
-  { to: '/inhalt', label: 'Inhalt', icon: 'toc', match: 'inhalt' },
+  // Auf dem Handy ist das Inhaltsverzeichnis über die erste Buchseite erreichbar
+  { to: '/inhalt', label: 'Inhalt', icon: 'toc', match: 'inhalt', desktopOnly: true },
+  { to: '/wochenplan', label: 'Woche', icon: 'calendar', match: 'wochenplan' },
   { to: '/import', label: 'Import', icon: 'plus', match: 'import' },
   { to: '/rezepte', label: 'Rezepte', icon: 'list', match: 'rezepte' },
   { to: '/einkauf', label: 'Einkauf', icon: 'cart', match: 'einkauf' },
@@ -39,7 +42,7 @@ function Nav({ section }: { section: string }) {
             <span className="nav-add-label">Importieren</span>
           </a>
         ) : (
-          <a key={n.to} href={`#${n.to}`} className="nav-item" aria-current={section === n.match ? 'page' : undefined}>
+          <a key={n.to} href={`#${n.to}`} className={`nav-item${n.desktopOnly ? ' nav-desktop' : ''}`} aria-current={section === n.match ? 'page' : undefined}>
             <Icon name={n.icon} />
             <span>{n.label}</span>
             {n.match === 'einkauf' && !!open && <span className="nav-badge">{open}</span>}
@@ -101,6 +104,9 @@ export function App() {
       break;
     case 'mehr':
       view = <MoreView />;
+      break;
+    case 'wochenplan':
+      view = <PlanView />;
       break;
     case 'heute':
       view = <TodayView />;

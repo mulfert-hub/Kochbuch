@@ -2,13 +2,13 @@
 // Regeln: pro Rezept/Kategorie gewinnt die neuere Änderung; Gelöschtes bleibt gelöscht, wenn die
 // Löschung neuer ist als die letzte Änderung; gleiche Kategorien (Name) und exakt doppelte Rezepte
 // (z. B. Beispielrezepte auf beiden Handys) werden zusammengelegt. Reine Funktion, damit testbar.
-import type { Category, Recipe, ShoppingItem } from '../types';
+import type { Category, PlanEntry, Recipe, ShoppingItem } from '../types';
 import type { TagInfoMap } from './tags';
 import { fold } from './search';
 
 export interface SyncTombstone {
   id: string;
-  kind: 'recipe' | 'category' | 'shopping';
+  kind: 'recipe' | 'category' | 'shopping' | 'plan';
   deletedAt: number;
   /** Inhaltsschlüssel gelöschter Rezepte: entfernt auch inhaltsgleiche Kopien auf anderen Geräten */
   key?: string;
@@ -22,6 +22,8 @@ export interface Snapshot {
   shopping?: ShoppingItem[];
   /** Bedeutungen von Tags */
   tagInfo?: TagInfoMap;
+  /** Wochenplan (ältere Datenstände: undefined) */
+  plan?: PlanEntry[];
 }
 
 function newer<T extends { updatedAt?: number }>(a: T | undefined, b: T | undefined): T | undefined {
@@ -99,7 +101,14 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot, now = Date.now()): Snap
   const tagInfo: TagInfoMap = { ...(a.tagInfo ?? {}) };
   for (const [k, v] of Object.entries(b.tagInfo ?? {})) if (!tagInfo[k] || v.updatedAt > tagInfo[k].updatedAt) tagInfo[k] = v;
 
-  return { recipes, categories, tombstones: [...tomb.values()], shopping, tagInfo };
+  // 6) Wochenplan: pro Eintrag neuere Version gewinnt, Gelöschtes raus
+  const planMap = new Map<string, PlanEntry>();
+  for (const e of [...(a.plan ?? []), ...(b.plan ?? [])]) planMap.set(e.id, newer(planMap.get(e.id), e)!);
+  const plan = [...planMap.values()]
+    .filter((e) => !deleted(e.id, e.updatedAt))
+    .sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.order - y.order || (x.id < y.id ? -1 : 1)));
+
+  return { recipes, categories, tombstones: [...tomb.values()], shopping, tagInfo, plan };
 }
 
 /** Alle Bild-IDs, die von Rezepten benutzt werden */

@@ -1,6 +1,6 @@
 // Lese-/Schreibfunktionen rund um Rezepte, Kategorien, Bilder und Einkaufsliste.
 import { addTombstones, db, tombstoneRecipes } from './db';
-import type { Category, Ingredient, Recipe, RecipeDraft, ShoppingItem } from '../types';
+import type { Category, Ingredient, Recipe, PlanEntry, RecipeDraft, ShoppingItem } from '../types';
 import { uid } from '../lib/id';
 import type { PhotoCredit } from '../lib/photoSearch';
 import { mergeIntoList } from '../lib/shopping';
@@ -89,6 +89,13 @@ export async function updateRecipe(id: string, patch: Partial<Recipe>): Promise<
   if (clean.ingredients) clean.ingredients = cleanIngredients(clean.ingredients);
   if (clean.steps) clean.steps = clean.steps.map((s) => s.trim()).filter(Boolean);
   await db.recipes.update(id, { ...clean, updatedAt: Date.now() });
+  // Titel im Wochenplan mitziehen (die Familien-App zeigt ihn an)
+  if (clean.title != null) {
+    const title = clean.title;
+    await db.plan.where('recipeId').equals(id).modify((e) => {
+      if (e.title !== title) e.title = title;
+    });
+  }
 }
 
 /** Foto vom Gericht setzen (Blob) oder entfernen (null). */
@@ -107,11 +114,17 @@ export async function setRecipePhoto(id: string, photo: Blob | null, credit: Pho
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
-  await db.transaction('rw', db.recipes, db.images, db.tombstones, async () => {
+  await db.transaction('rw', [db.recipes, db.images, db.tombstones, db.plan], async () => {
     const r = await db.recipes.get(id);
     await db.images.where('recipeId').equals(id).delete();
     await db.recipes.delete(id);
     if (r) await tombstoneRecipes([r]);
+    // Aus dem Wochenplan nehmen
+    const planIds = (await db.plan.where('recipeId').equals(id).primaryKeys()) as string[];
+    if (planIds.length) {
+      await db.plan.bulkDelete(planIds);
+      await addTombstones('plan', planIds);
+    }
   });
 }
 
@@ -206,4 +219,37 @@ export async function addManualShopping(text: string): Promise<void> {
     source: { recipeId: 'manuell', title: 'Manuell' },
   });
   await db.shopping.bulkPut(after);
+}
+
+// ---------- Wochenplan ----------
+export async function addToPlan(recipe: Pick<Recipe, 'id' | 'title'>, date: string): Promise<void> {
+  const sameDay = await db.plan.where('date').equals(date).toArray();
+  if (sameDay.some((e) => e.recipeId === recipe.id)) return;
+  await db.plan.put({
+    id: uid(),
+    date,
+    recipeId: recipe.id,
+    title: recipe.title,
+    order: sameDay.reduce((m, e) => Math.max(m, e.order), -1) + 1,
+    updatedAt: Date.now(),
+  });
+}
+
+export async function removeFromPlan(id: string): Promise<void> {
+  await db.transaction('rw', db.plan, db.tombstones, async () => {
+    await db.plan.delete(id);
+    await addTombstones('plan', [id]);
+  });
+}
+
+/** Alle Zutaten der geplanten Rezepte auf die Einkaufsliste – gibt die Zahl der Rezepte zurück */
+export async function planToShopping(entries: PlanEntry[]): Promise<number> {
+  let n = 0;
+  for (const e of entries) {
+    const r = await db.recipes.get(e.recipeId);
+    if (!r) continue;
+    await addToShopping(r, null);
+    n++;
+  }
+  return n;
 }

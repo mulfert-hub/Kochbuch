@@ -30,6 +30,7 @@ const PATHS: Record<string, string> = {
   drag: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
   text: 'M5 6h14M5 12h14M5 18h9',
   layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
+  calendar: 'M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM4 10h16M8 3v4M16 3v4',
   refresh: 'M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4',
 };
 

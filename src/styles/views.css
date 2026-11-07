@@ -23,7 +23,8 @@
   display: none;
 }
 
-.nav-more {
+.nav-more,
+.nav-desktop {
   display: none;
 }
 
@@ -34,6 +35,9 @@
   .nav-more {
     display: flex;
     margin-top: auto;
+  }
+  .nav-desktop {
+    display: flex;
   }
   .nav-badge {
     position: static;
@@ -2463,4 +2467,225 @@ h1.cook-step-no {
 
 .recipe-source a {
   color: var(--accent);
+}
+
+/* ---------- Wochenplan ---------- */
+
+.plan-week-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+
+.plan-week-label {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  padding: 4px;
+}
+
+.plan-week-label strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.plan-week-label span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.plan-days-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.plan-day {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.plan-day.is-today {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.plan-day.is-past {
+  opacity: 0.7;
+}
+
+.plan-day-head {
+  width: 100%;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.plan-day-name {
+  display: grid;
+  min-width: 92px;
+}
+
+.plan-day-name strong {
+  font-size: 16px;
+}
+
+.plan-day-name span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.is-today .plan-day-name strong {
+  color: var(--accent);
+}
+
+.plan-empty {
+  flex: 1;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.plan-add {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.plan-add svg {
+  width: 18px;
+  height: 18px;
+}
+
+.plan-meals {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px 16px;
+  display: grid;
+  gap: 2px;
+}
+
+.plan-meal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 2px;
+}
+
+.plan-meal-title {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  padding: 6px 0;
+}
+
+.plan-shop {
+  margin-top: 18px;
+}
+
+.plan-search {
+  margin: 0;
+}
+
+.plan-pick,
+.plan-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.plan-pick-item,
+.plan-day-pick {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.plan-pick-item svg,
+.plan-day-pick svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.plan-pick-item.is-planned svg,
+.plan-day-pick.is-planned svg {
+  color: var(--sage);
+}
+
+.plan-pick-item:disabled,
+.plan-day-pick:disabled {
+  opacity: 0.6;
+}
+
+.plan-pick-text {
+  display: grid;
+  min-width: 0;
+}
+
+.plan-pick-text strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.plan-pick-text span,
+.plan-day-meals {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.plan-day-meals {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-for {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
 }

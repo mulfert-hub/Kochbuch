@@ -12,7 +12,8 @@
     "test:sync": "node e2e/sync-test.mjs",
     "test:claude": "node e2e/claude-test.mjs",
     "test:features": "node e2e/features-test.mjs",
-    "test:voice": "node e2e/voice-link-test.mjs"
+    "test:voice": "node e2e/voice-link-test.mjs",
+    "test:plan": "node e2e/plan-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

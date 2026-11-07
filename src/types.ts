@@ -82,6 +82,18 @@ export interface ShoppingItem {
   aisle?: string;
 }
 
+/** Ein Essen im Wochenplan */
+export interface PlanEntry {
+  id: string;
+  /** Tag als „JJJJ-MM-TT“ (Ortszeit) */
+  date: string;
+  recipeId: string;
+  /** Titel zum Zeitpunkt des Eintragens – damit die Familien-App ihn ohne Rezeptdaten zeigen kann */
+  title: string;
+  order: number;
+  updatedAt: number;
+}
+
 /** Entwurf nach dem OCR, noch nicht gespeichert. */
 export interface RecipeDraft {
   title: string;

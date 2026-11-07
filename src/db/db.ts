@@ -1,11 +1,11 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Category, Recipe, ShoppingItem, StoredImage } from '../types';
+import type { Category, PlanEntry, Recipe, ShoppingItem, StoredImage } from '../types';
 import { contentKey } from '../lib/syncMerge';
 
 /** Merkzettel für gelöschte Einträge, damit die Synchronisation sie nicht wieder herstellt */
 export interface Tombstone {
   id: string;
-  kind: 'recipe' | 'category' | 'shopping';
+  kind: 'recipe' | 'category' | 'shopping' | 'plan';
   deletedAt: number;
   key?: string;
 }
@@ -22,6 +22,7 @@ export const db = new Dexie('kochbuch') as Dexie & {
   shopping: EntityTable<ShoppingItem, 'id'>;
   settings: EntityTable<Setting, 'key'>;
   tombstones: EntityTable<Tombstone, 'id'>;
+  plan: EntityTable<PlanEntry, 'id'>;
 };
 
 db.version(1).stores({
@@ -34,6 +35,11 @@ db.version(1).stores({
 
 db.version(2).stores({
   tombstones: 'id, kind',
+});
+
+// Wochenplan (wird auch von der Familien-App gelesen: Datenbank „kochbuch“, Tabelle „plan“)
+db.version(3).stores({
+  plan: 'id, date, recipeId',
 });
 
 // ---------- Änderungen melden (für die automatische Synchronisation) ----------
@@ -62,7 +68,7 @@ function notify() {
   setTimeout(() => changeListeners.forEach((l) => l()), 0);
 }
 
-for (const table of [db.recipes, db.categories, db.images, db.tombstones, db.shopping, db.settings] as const) {
+for (const table of [db.recipes, db.categories, db.images, db.tombstones, db.shopping, db.settings, db.plan] as const) {
   table.hook('creating', notify);
   table.hook('updating', () => {
     notify();
@@ -73,7 +79,7 @@ for (const table of [db.recipes, db.categories, db.images, db.tombstones, db.sho
 
 // Kategorien und Einkaufsliste bekommen einen Änderungszeitpunkt (für „neuere Änderung gewinnt“).
 // Nur bei echten Änderungen – ein unverändertes Speichern darf den Zeitpunkt nicht verschieben.
-for (const table of [db.categories, db.shopping] as const) {
+for (const table of [db.categories, db.shopping, db.plan] as const) {
   (table as typeof db.categories).hook('creating', (_key, obj) => {
     if (!muted && obj.updatedAt == null) obj.updatedAt = Date.now();
   });

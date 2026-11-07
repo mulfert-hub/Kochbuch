@@ -8,6 +8,7 @@ import { StoredImage } from './ui';
 import { Lightbox } from './Lightbox';
 import { TimerChips } from './StepText';
 import { navigate } from '../router';
+import { PickDaySheet } from './PlanSheets';
 
 export function ServingsStepper({
   value,
@@ -124,6 +125,7 @@ export function RecipeArticle({
   pageLabel?: ReactNode;
 }) {
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [planning, setPlanning] = useState(false);
   const base = recipe.servings;
   const factor = base ? servings / base : servings;
   const cats = categories.filter((c) => recipe.categoryIds.includes(c.id));
@@ -180,6 +182,9 @@ export function RecipeArticle({
               <Icon name="flame" /> Jetzt kochen
             </button>
           )}
+          <button className="btn plan-add-btn" onClick={() => setPlanning(true)}>
+            <Icon name="calendar" /> Zum Wochenplan hinzufügen
+          </button>
         </div>
       </header>
 
@@ -234,6 +239,7 @@ export function RecipeArticle({
       {actions && <footer className="recipe-actions">{actions}</footer>}
       {pageLabel && <div className="page-number">{pageLabel}</div>}
       {lightbox && <Lightbox imageId={lightbox} onClose={() => setLightbox(null)} />}
+      {planning && <PickDaySheet recipe={recipe} onClose={() => setPlanning(false)} />}
     </article>
   );
 }

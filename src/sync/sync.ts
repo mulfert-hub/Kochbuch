@@ -80,23 +80,24 @@ interface DataFile extends Snapshot {
 }
 
 async function localSnapshot(): Promise<Snapshot> {
-  const [recipes, categories, tombstones, shopping, tagInfo] = await Promise.all([
+  const [recipes, categories, tombstones, shopping, tagInfo, plan] = await Promise.all([
     db.recipes.toArray(),
     db.categories.toArray(),
     db.tombstones.toArray(),
     db.shopping.toArray(),
     getTagInfo(),
+    db.plan.toArray(),
   ]);
-  return { recipes, categories, tombstones, shopping, tagInfo };
+  return { recipes, categories, tombstones, shopping, tagInfo, plan };
 }
 
 /** Lokale Tabellen auf den zusammengeführten Stand bringen */
 async function applyLocally(merged: Snapshot): Promise<Snapshot> {
   return withoutChangeEvents(() =>
-    db.transaction('rw', [db.recipes, db.categories, db.tombstones, db.images, db.shopping, db.settings], async () => {
+    db.transaction('rw', [db.recipes, db.categories, db.tombstones, db.images, db.shopping, db.settings, db.plan], async () => {
       // Erneut lesen und zusammenführen, falls während des Downloads lokal etwas geändert wurde
       const final = mergeSnapshots(await localSnapshot(), merged);
-      const replace = async <T extends { id: string }>(table: typeof db.recipes | typeof db.categories | typeof db.shopping, rows: T[]) => {
+      const replace = async <T extends { id: string }>(table: typeof db.recipes | typeof db.categories | typeof db.shopping | typeof db.plan, rows: T[]) => {
         const keep = new Set(rows.map((r) => r.id));
         const old = (await table.toCollection().primaryKeys()) as string[];
         await table.bulkDelete(old.filter((id) => !keep.has(id)));
@@ -105,6 +106,7 @@ async function applyLocally(merged: Snapshot): Promise<Snapshot> {
       await replace(db.recipes, final.recipes);
       await replace(db.categories, final.categories);
       await replace(db.shopping, final.shopping ?? []);
+      await replace(db.plan, final.plan ?? []);
       await db.tombstones.bulkPut(final.tombstones);
       await db.settings.put({ key: 'tagInfo', value: final.tagInfo ?? {} });
       // Bilder gelöschter Rezepte aufräumen
@@ -171,7 +173,7 @@ async function syncOnce(gh: GitHubClient): Promise<void> {
   if (remoteFile) {
     const json = JSON.parse(remoteFile.text) as DataFile;
     if (json.format === 'kochbuch-sync')
-      remote = { recipes: json.recipes ?? [], categories: json.categories ?? [], tombstones: json.tombstones ?? [], shopping: json.shopping ?? [], tagInfo: json.tagInfo ?? {} };
+      remote = { recipes: json.recipes ?? [], categories: json.categories ?? [], tombstones: json.tombstones ?? [], shopping: json.shopping ?? [], tagInfo: json.tagInfo ?? {}, plan: json.plan ?? [] };
   }
 
   const final = await applyLocally(mergeSnapshots(await localSnapshot(), remote));
@@ -209,7 +211,7 @@ async function syncOnce(gh: GitHubClient): Promise<void> {
 function stableJson(s: Snapshot & { updatedAt: number }): string {
   const byId = <T extends { id: string }>(l: T[] = []) => [...l].sort((a, b) => (a.id < b.id ? -1 : 1));
   const info = Object.entries(s.tagInfo ?? {}).sort(([a], [b]) => (a < b ? -1 : 1));
-  return JSON.stringify([byId(s.recipes), byId(s.categories), byId(s.tombstones), byId(s.shopping), info]);
+  return JSON.stringify([byId(s.recipes), byId(s.categories), byId(s.tombstones), byId(s.shopping), info, byId(s.plan)]);
 }
 
 // ---------- Einrichten ----------
