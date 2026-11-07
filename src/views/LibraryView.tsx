@@ -30,7 +30,7 @@ function RecipeDetail({ recipe, categories, onBack }: { recipe: Recipe; categori
   };
 
   return (
-    <div className="detail">
+    <div className={`detail${recipe.photoId ? ' has-hero' : ''}`}>
       <div className="detail-bar">
         {onBack ? (
           <button className="icon-btn" onClick={onBack} aria-label="Zurück zur Liste">
