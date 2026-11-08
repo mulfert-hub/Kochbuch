@@ -7,10 +7,10 @@ import { MoreLink } from '../components/MoreLink';
 import { confirmDialog, toast } from '../components/ui';
 import { addCategory, deleteCategory, moveCategory, renameCategory } from '../db/repo';
 
-export function TocView() {
+export function TocView({ edit = false }: { edit?: boolean }) {
   const recipes = useRecipes();
   const categories = useCategories();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(edit);
   const [newName, setNewName] = useState('');
 
   const ordered = useMemo(() => (recipes && categories ? bookOrder(recipes, categories) : []), [recipes, categories]);
@@ -37,7 +37,7 @@ export function TocView() {
       <div className="page-head">
         <div>
           <div className="eyebrow">{categories.length} Kategorien</div>
-          <h1 className="page-title">Inhalt</h1>
+          <h1 className="page-title">{editing ? 'Kategorien' : 'Inhalt'}</h1>
         </div>
         <div className="head-actions">
           <button className={`btn ${editing ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setEditing(!editing)}>
@@ -47,6 +47,7 @@ export function TocView() {
         </div>
       </div>
 
+      {editing && <p className="hint toc-hint">Neue Kategorien, Namen und Reihenfolge werden auf alle Geräte übertragen, wenn die Synchronisation eingerichtet ist.</p>}
       {editing && (
         <form className="toc-add" onSubmit={add}>
           <input className="input" placeholder="Neue Kategorie, z. B. Suppen" value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="Neue Kategorie" />
@@ -68,7 +69,16 @@ export function TocView() {
                     className="input toc-rename"
                     defaultValue={c.name}
                     aria-label={`Kategorie ${c.name} umbenennen`}
-                    onBlur={(e) => e.target.value.trim() && e.target.value !== c.name && renameCategory(c.id, e.target.value)}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (!v || v === c.name) return;
+                      if (categories.some((o) => o.id !== c.id && o.name.toLowerCase() === v.toLowerCase())) {
+                        toast('Diese Kategorie gibt es schon');
+                        e.target.value = c.name;
+                        return;
+                      }
+                      void renameCategory(c.id, v);
+                    }}
                     onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                   />
                 ) : (

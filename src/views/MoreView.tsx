@@ -298,6 +298,25 @@ function MeaningRow({ tag, value }: { tag: string; value: string }) {
   );
 }
 
+/** Kategorien: Anzahl + Weg zur Verwaltung (anlegen, umbenennen, sortieren, löschen) */
+function CategoriesCard() {
+  const cats = useLiveQuery(() => db.categories.orderBy('order').toArray(), []);
+  return (
+    <section className="more-card card">
+      <h2>Kategorien</h2>
+      <p>
+        {cats?.length ? cats.map((c) => c.name).join(' · ') : 'Noch keine Kategorien.'} Neue Kategorien, Namen und Reihenfolge werden mit
+        synchronisiert.
+      </p>
+      <div className="more-actions">
+        <a className="btn btn-primary" href="#/inhalt?bearbeiten">
+          <Icon name="edit" /> Kategorien bearbeiten
+        </a>
+      </div>
+    </section>
+  );
+}
+
 export function MoreView() {
   const counts = useLiveQuery(async () => ({ r: await db.recipes.count(), i: await db.images.count() }), []);
   const [busy, setBusy] = useState<string | null>(null);
@@ -381,6 +400,8 @@ export function MoreView() {
       </section>
 
       <ClaudeCard />
+
+      <CategoriesCard />
 
       <TagsCard />
 

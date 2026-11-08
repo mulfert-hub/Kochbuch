@@ -99,7 +99,7 @@ export function App() {
       view = sub === 'bearbeiten' && id ? <EditView id={id} /> : <LibraryView recipeId={id} tagParam={query.get('tag')} />;
       break;
     case 'inhalt':
-      view = <TocView />;
+      view = <TocView key={query.has('bearbeiten') ? 'edit' : 'view'} edit={query.has('bearbeiten')} />;
       break;
     case 'einkauf':
       view = <ShoppingView />;

@@ -56,6 +56,9 @@ function Cover({ recipes, categories, onOpen }: { recipes: Recipe[]; categories:
             </ul>
           </div>
         ))}
+        <button className="cover-edit-cats" onClick={() => navigate('/inhalt?bearbeiten')}>
+          <Icon name="edit" /> Kategorien bearbeiten
+        </button>
       </nav>
     </div>
   );

@@ -8,6 +8,8 @@ export interface Tombstone {
   kind: 'recipe' | 'category' | 'shopping' | 'plan';
   deletedAt: number;
   key?: string;
+  /** Zusammengelegte Kategorie: ID der Kategorie, in die sie aufgegangen ist */
+  into?: string;
 }
 
 export interface Setting {

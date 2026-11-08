@@ -148,9 +148,13 @@ export async function removeImage(recipeId: string, imageId: string): Promise<vo
 
 // ---------- Kategorien ----------
 
+/** Neue Kategorie – gibt es schon eine gleichnamige, wird diese zurückgegeben */
 export async function addCategory(name: string): Promise<Category> {
+  const n = name.trim();
+  const same = (await db.categories.toArray()).find((c) => c.name.trim().toLowerCase() === n.toLowerCase());
+  if (same) return same;
   const max = (await db.categories.orderBy('order').last())?.order ?? -1;
-  const c = { id: uid(), name: name.trim(), order: max + 1 };
+  const c = { id: uid(), name: n, order: max + 1 };
   await db.categories.add(c);
   return c;
 }

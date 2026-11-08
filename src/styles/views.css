@@ -2768,3 +2768,25 @@ h1.cook-step-no {
   font-family: var(--font-display);
   font-size: 18px;
 }
+
+.cover-edit-cats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+}
+
+.cover-edit-cats svg {
+  width: 16px;
+  height: 16px;
+}
+
+.toc-hint {
+  margin: -6px 0 12px;
+}

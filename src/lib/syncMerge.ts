@@ -12,6 +12,8 @@ export interface SyncTombstone {
   deletedAt: number;
   /** Inhaltsschlüssel gelöschter Rezepte: entfernt auch inhaltsgleiche Kopien auf anderen Geräten */
   key?: string;
+  /** Zusammengelegte Kategorie: ID der Kategorie, in die sie aufgegangen ist */
+  into?: string;
 }
 
 export interface Snapshot {
@@ -59,15 +61,18 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot, now = Date.now()): Snap
   for (const c of [...a.categories, ...b.categories]) catMap.set(c.id, newer(catMap.get(c.id), c)!);
   let categories = [...catMap.values()].filter((c) => !deleted(c.id, c.updatedAt));
 
-  // Gleichnamige Kategorien zusammenlegen (deterministisch: kleinste ID bleibt)
+  // Gleichnamige Kategorien zusammenlegen (deterministisch: kleinste ID bleibt).
+  // Frühere Zusammenlegungen (auch von anderen Geräten) stehen im Löschvermerk („into“) –
+  // so finden auch Rezepte, die noch die alte ID tragen, ihre Kategorie wieder.
   const remap = new Map<string, string>();
+  for (const t of tomb.values()) if (t.kind === 'category' && t.into && t.into !== t.id) remap.set(t.id, t.into);
   const byName = new Map<string, Category>();
   for (const c of [...categories].sort((x, y) => (x.id < y.id ? -1 : 1))) {
     const key = fold(c.name.trim());
     const keep = byName.get(key);
     if (keep) {
       remap.set(c.id, keep.id);
-      tomb.set(c.id, { id: c.id, kind: 'category', deletedAt: Math.max(now, c.updatedAt ?? 0) });
+      tomb.set(c.id, { id: c.id, kind: 'category', deletedAt: Math.max(now, c.updatedAt ?? 0), into: keep.id });
     } else byName.set(key, c);
   }
   categories = [...byName.values()].sort((x, y) => x.order - y.order || x.name.localeCompare(y.name, 'de'));
@@ -79,7 +84,11 @@ export function mergeSnapshots(a: Snapshot, b: Snapshot, now = Date.now()): Snap
   let recipes = [...recMap.values()]
     .filter((r) => !deleted(r.id, r.updatedAt) && !deletedByContent(r))
     .map((r) => {
-      const ids = [...new Set(r.categoryIds.map((id) => remap.get(id) ?? id))].filter((id) => catIds.has(id));
+      const resolve = (id: string) => {
+        for (let i = 0; i < 10 && remap.has(id); i++) id = remap.get(id)!;
+        return id;
+      };
+      const ids = [...new Set(r.categoryIds.map(resolve))].filter((id) => catIds.has(id));
       return ids.length === r.categoryIds.length && ids.every((id, i) => id === r.categoryIds[i]) ? r : { ...r, categoryIds: ids };
     });
 

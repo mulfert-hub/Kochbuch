@@ -202,6 +202,37 @@ const catsA = await A.evaluate(
 );
 check('Automatisch: neue Kategorie von B ist auf A', catsA.includes('Suppen'), catsA.join(', '));
 
+// 6b) Über „Mehr → Kategorien bearbeiten“: A benennt um und schiebt nach oben → B übernimmt beides
+const catsOf = (p) =>
+  p.evaluate(
+    () =>
+      new Promise((res) => {
+        const r = indexedDB.open('kochbuch');
+        r.onsuccess = () => {
+          const g = r.result.transaction('categories').objectStore('categories').getAll();
+          g.onsuccess = () => res(g.result.sort((x, y) => x.order - y.order).map((x) => x.name));
+        };
+      }),
+  );
+await A.goto(`${BASE}#/mehr`);
+await A.getByRole('link', { name: /Kategorien bearbeiten/ }).click();
+await A.waitForSelector('.toc-add');
+const rename = A.getByLabel('Kategorie Suppen umbenennen');
+await rename.fill('Suppen & Eintöpfe');
+await rename.press('Enter');
+await A.locator('.toc-chapter', { has: A.getByLabel('Kategorie Suppen & Eintöpfe umbenennen') }).getByRole('button', { name: 'Nach oben' }).click();
+await A.waitForTimeout(300);
+await syncButton(A);
+await syncButton(B);
+const catsB = await catsOf(B);
+check('Umbenennen und Reihenfolge kommen auf B an', catsB.includes('Suppen & Eintöpfe') && !catsB.includes('Suppen') && catsB.indexOf('Suppen & Eintöpfe') < catsB.length - 1, catsB.join(', '));
+check('Reihenfolge auf beiden gleich', JSON.stringify(catsB) === JSON.stringify(await catsOf(A)));
+// Gleicher Name noch einmal angelegt → keine doppelte Kategorie
+await B.goto(`${BASE}#/inhalt?bearbeiten`);
+await B.locator('.toc-add input').fill('suppen & eintöpfe');
+await B.locator('.toc-add button[type=submit]').click();
+check('Doppelte Kategorie wird verhindert', (await B.locator('.toast').textContent()).includes('gibt es schon'));
+
 // 7) Einkaufsliste: A setzt etwas drauf, B hakt ab, A löscht einen Eintrag
 const shop = (p) =>
   p.evaluate(
