@@ -16,6 +16,7 @@ import { PlanView } from './views/PlanView';
 import { TimerBar } from './components/TimerBar';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/db';
+import { useMediaQuery } from './hooks';
 import './styles/family.css';
 
 const NAV: { to: string; label: string; icon: IconName; match: string; desktopOnly?: boolean }[] = [
@@ -75,6 +76,10 @@ function FamilyBack() {
 export function App() {
   const { segments, query } = useRoute();
   const [section, id, sub] = segments;
+  // Auf der Rezeptseite am Handy (eigene Seite mit Zurück-Knopf) entfällt „← Familie Ulfert“,
+  // damit das Foto ganz oben randlos stehen kann
+  const wide = useMediaQuery('(min-width: 1100px)');
+  const showFamily = !!FAMILIE_URL && !(section === 'rezepte' && id && !sub && !wide);
 
   useEffect(() => {
     if (!section) navigate('/buch', { replace: true });
@@ -123,10 +128,10 @@ export function App() {
   }
 
   return (
-    <div className={`app section-${section ?? 'buch'}${FAMILIE_URL ? ' has-family' : ''}`}>
+    <div className={`app section-${section ?? 'buch'}${showFamily ? ' has-family' : ''}`}>
       <Nav section={section ?? 'buch'} />
       <main className="app-main">
-        <FamilyBack />
+        {showFamily && <FamilyBack />}
         {view}
       </main>
       <TimerBar />
